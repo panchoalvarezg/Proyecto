@@ -1,89 +1,78 @@
-private ResponseEntity<Map<String, Object>> startGameWithExample(int boardSize) {
-    var gameState = exampleGameService.startNewGame(boardSize);
+package com.atraparalagato.controller;
 
-    Map<String, Object> response = new HashMap<>();
-    response.put("gameId", gameState.getGameId());
-    response.put("status", gameState.getStatus().toString());
-    response.put("cat", Map.of("q", gameState.getCatPosition().getQ(), "r", gameState.getCatPosition().getR()));
-    response.put("movesCount", gameState.getMoveCount());
-    response.put("boardSize", boardSize);
-    response.put("implementation", "example");
-    // Agrega las celdas bloqueadas
-    response.put("blockedCells",
-        gameState.getBlockedPositions()
-                 .stream()
-                 .map(pos -> Map.of("q", pos.getQ(), "r", pos.getR()))
-                 .collect(Collectors.toList())
-    );
-    return ResponseEntity.ok(response);
-}
+import com.atraparalagato.base.model.GameState;
+import com.atraparalagato.impl.model.HexPosition;
+import com.atraparalagato.impl.service.HexGameService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-private ResponseEntity<Map<String, Object>> blockPositionWithExample(String gameId, HexPosition position) {
-    var gameStateOpt = exampleGameService.executePlayerMove(gameId, position);
+import java.util.*;
+import java.util.stream.Collectors;
 
-    if (gameStateOpt.isEmpty()) {
-        return ResponseEntity.notFound().build();
+@RestController
+@RequestMapping("/api/game")
+@CrossOrigin(origins = "*")
+public class GameController {
+
+    private final HexGameService hexGameService;
+
+    @Autowired
+    public GameController(HexGameService hexGameService) {
+        this.hexGameService = hexGameService;
     }
 
-    var gameState = gameStateOpt.get();
-
-    Map<String, Object> response = new HashMap<>();
-    response.put("gameId", gameState.getGameId());
-    response.put("status", gameState.getStatus().toString());
-    response.put("cat", Map.of("q", gameState.getCatPosition().getQ(), "r", gameState.getCatPosition().getR()));
-    response.put("movesCount", gameState.getMoveCount());
-    response.put("implementation", "example");
-    // Agrega las celdas bloqueadas
-    response.put("blockedCells",
-        gameState.getBlockedPositions()
-                 .stream()
-                 .map(pos -> Map.of("q", pos.getQ(), "r", pos.getR()))
-                 .collect(Collectors.toList())
-    );
-    return ResponseEntity.ok(response);
-}
-
-private ResponseEntity<Map<String, Object>> startGameWithStudentImplementation(int boardSize) {
-    GameState<HexPosition> gameState = hexGameService.startNewGame(boardSize);
-
-    Map<String, Object> response = new HashMap<>();
-    response.put("gameId", gameState.getGameId());
-    response.put("status", gameState.getStatus().toString());
-    response.put("cat", Map.of("q", gameState.getCatPosition().getQ(), "r", gameState.getCatPosition().getR()));
-    response.put("movesCount", gameState.getMoveCount());
-    response.put("boardSize", boardSize);
-    response.put("implementation", "impl");
-    // Agrega las celdas bloqueadas
-    response.put("blockedCells",
-        gameState.getBlockedPositions()
-                 .stream()
-                 .map(pos -> Map.of("q", pos.getQ(), "r", pos.getR()))
-                 .collect(Collectors.toList())
-    );
-    return ResponseEntity.ok(response);
-}
-
-private ResponseEntity<Map<String, Object>> blockPositionWithStudentImplementation(String gameId, HexPosition position) {
-    Optional<GameState<HexPosition>> gameStateOpt = hexGameService.executePlayerMove(gameId, position);
-
-    if (gameStateOpt.isEmpty()) {
-        return ResponseEntity.notFound().build();
+    @GetMapping("/start")
+    public ResponseEntity<Map<String, Object>> startGame(@RequestParam(defaultValue = "11") int boardSize) {
+        GameState<HexPosition> gameState = hexGameService.startNewGame(boardSize);
+        return ResponseEntity.ok(gameStateToMap(gameState, boardSize));
     }
 
-    GameState<HexPosition> gameState = gameStateOpt.get();
+    @PostMapping("/block")
+    public ResponseEntity<Map<String, Object>> blockPosition(
+            @RequestParam String gameId,
+            @RequestParam int q,
+            @RequestParam int r) {
 
-    Map<String, Object> response = new HashMap<>();
-    response.put("gameId", gameState.getGameId());
-    response.put("status", gameState.getStatus().toString());
-    response.put("cat", Map.of("q", gameState.getCatPosition().getQ(), "r", gameState.getCatPosition().getR()));
-    response.put("movesCount", gameState.getMoveCount());
-    response.put("implementation", "impl");
-    // Agrega las celdas bloqueadas
-    response.put("blockedCells",
-        gameState.getBlockedPositions()
-                 .stream()
-                 .map(pos -> Map.of("q", pos.getQ(), "r", pos.getR()))
-                 .collect(Collectors.toList())
-    );
-    return ResponseEntity.ok(response);
+        Optional<GameState<HexPosition>> gameStateOpt = hexGameService.executePlayerMove(gameId, new HexPosition(q, r));
+        if (gameStateOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        GameState<HexPosition> gameState = gameStateOpt.get();
+        return ResponseEntity.ok(gameStateToMap(gameState, gameState.getBoard() != null ? gameState.getBoard().getSize() : 11));
+    }
+
+    @GetMapping("/state/{gameId}")
+    public ResponseEntity<Map<String, Object>> getGameState(@PathVariable String gameId) {
+        Optional<GameState<HexPosition>> gameStateOpt = hexGameService.getGameState(gameId);
+        if (gameStateOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        GameState<HexPosition> gameState = gameStateOpt.get();
+        return ResponseEntity.ok(gameStateToMap(gameState, gameState.getBoard() != null ? gameState.getBoard().getSize() : 11));
+    }
+
+    // Utilidad para construir la respuesta JSON
+    private Map<String, Object> gameStateToMap(GameState<HexPosition> gameState, int boardSize) {
+        Map<String, Object> response = new HashMap<>();
+        HexPosition cat = gameState.getCatPosition();
+        response.put("gameId", gameState.getGameId());
+        response.put("cat", Map.of("q", cat.getQ(), "r", cat.getR()));
+        response.put("movesCount", gameState.getMoveCount());
+        response.put("status", gameState.getStatus() != null ? gameState.getStatus().toString() : "IN_PROGRESS");
+        response.put("boardSize", boardSize);
+        response.put("implementation", "impl");
+        // Bloqueadas
+        if (gameState.getBoard() != null && gameState.getBoard().getBlockedPositions() != null) {
+            response.put("blockedCells",
+                gameState.getBoard().getBlockedPositions()
+                    .stream()
+                    .map(pos -> Map.of("q", pos.getQ(), "r", pos.getR()))
+                    .collect(Collectors.toList())
+            );
+        } else {
+            response.put("blockedCells", new ArrayList<>());
+        }
+        return response;
+    }
 }
