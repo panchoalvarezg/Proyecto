@@ -28,7 +28,8 @@ public class HexGameService {
         // Posición inicial del gato: centro del tablero
         HexPosition initialCatPosition = new HexPosition(boardSize / 2, boardSize / 2);
         String gameId = UUID.randomUUID().toString();
-        GameState<HexPosition> gameState = new HexGameState(gameId, initialCatPosition);
+        // CORRECCIÓN: Se pasa también boardSize al constructor
+        GameState<HexPosition> gameState = new HexGameState(gameId, initialCatPosition, boardSize);
         games.put(gameId, gameState);
         return gameState;
     }
@@ -45,6 +46,9 @@ public class HexGameService {
             return Optional.empty();
         }
         // Aquí deberías actualizar el estado según tus reglas (bloquear una celda, mover el gato, etc.)
+        if (gameState instanceof HexGameState hexGameState) {
+            hexGameState.blockCell(position);
+        }
         gameState.executeMove(position);
         return Optional.of(gameState);
     }
