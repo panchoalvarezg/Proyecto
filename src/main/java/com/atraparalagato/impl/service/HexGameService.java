@@ -36,13 +36,6 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
         return gameRepository.findById(gameId).map(gs -> (HexGameState) gs);
     }
 
-    /**
-     * Ejecuta la jugada del jugador:
-     * - Bloquea la celda si es válida.
-     * - Mueve el gato automáticamente usando la estrategia AStar.
-     * - Actualiza el estado (gana/pierde/continúa).
-     * - Guarda el estado y lo retorna.
-     */
     public Optional<HexGameState> executePlayerMove(String gameId, HexPosition position, String playerId) {
         Optional<HexGameState> optional = getGameState(gameId);
         if (optional.isEmpty()) return Optional.empty();
@@ -55,24 +48,20 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
         HexGameBoard board = gameState.getGameBoard();
         HexPosition cat = gameState.getCatPosition();
 
-        // Validar movimiento: no se puede bloquear donde está el gato o una celda bloqueada
         if (cat.equals(position) || board.isBlocked(position)) {
             return Optional.of(gameState);
         }
 
-        // Bloquear la celda (agrega al set de bloqueadas)
         board.getBlockedPositions().add(position);
 
-        // Mover el gato automáticamente usando la estrategia AStarCatMovement
         AStarCatMovement movementStrategy = new AStarCatMovement(board);
         Optional<HexPosition> maybeNextPos = movementStrategy.getNextMove(cat);
 
         if (maybeNextPos.isEmpty()) {
-            // El gato no puede moverse: el jugador ganó
-            gameState.setCatPosition(cat); // Esto fuerza updateGameStatus()
+            gameState.setCatPosition(cat); // Fuerza updateGameStatus()
         } else {
             HexPosition nextCat = maybeNextPos.get();
-            gameState.setCatPosition(nextCat); // Esto actualiza el estado internamente si corresponde
+            gameState.setCatPosition(nextCat);
         }
 
         gameState.setMoveCount(gameState.getMoveCount() + 1);
@@ -89,15 +78,25 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
         HexGameBoard board = gameState.getGameBoard();
         HexPosition cat = gameState.getCatPosition();
 
-        // No puedes bloquear donde está el gato, ni fuera de los bordes, ni algo ya bloqueado
+        // No puedes bloquear donde está el gato, ni algo ya bloqueado ni fuera de los bordes
         if (cat.equals(position)) return false;
-        if (!board.isPositionInBounds(position)) return false;
         if (board.isBlocked(position)) return false;
+        // Validación manual de límites (ya que isPositionInBounds es protected)
+        int q = position.getQ();
+        int r = position.getR();
+        int s = -q - r;
+        int size = board.getSize();
+        if (Math.abs(q) > size || Math.abs(r) > size || Math.abs(s) > size) return false;
         return true;
     }
 
     @Override
     public Optional<HexPosition> getSuggestedMove(String gameId) {
+        throw new UnsupportedOperationException("No implementado aún");
+    }
+
+    @Override
+    public Object getGameStatistics(String gameId) {
         throw new UnsupportedOperationException("No implementado aún");
     }
 
