@@ -1,90 +1,164 @@
-package com.atraparalagato.impl.service;
+package com.atraparalagato.impl.strategy;
 
-import com.atraparalagato.base.model.GameState.GameStatus;
-import com.atraparalagato.impl.model.HexGameState;
-import com.atraparalagato.impl.model.HexGameBoard;
+import com.atraparalagato.base.model.GameBoard;
+import com.atraparalagato.base.strategy.CatMovementStrategy;
 import com.atraparalagato.impl.model.HexPosition;
-import com.atraparalagato.impl.repository.H2GameRepository;
-import com.atraparalagato.impl.strategy.AStarCatMovement;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
-public class HexGameService extends com.atraparalagato.base.service.GameService<HexPosition> {
+/**
+ * Implementación esqueleto de estrategia de movimiento usando algoritmo A*.
+ */
+public class AStarCatMovement extends CatMovementStrategy<HexPosition> {
+	
+	public AStarCatMovement(GameBoard<HexPosition> board) {
+		super(board);
+	}
+	
+	@Override
+	protected List<HexPosition> getPossibleMoves(HexPosition currentPosition) {
+		return board.getAdjacentPositions(currentPosition).stream()
+			.filter(Predicate.not(board::isBlocked))
+			.collect(Collectors.toList());
+	}
+	
+	@Override
+	protected Optional<HexPosition> selectBestMove(List<HexPosition> possibleMoves, 
+													HexPosition currentPosition, 
+													HexPosition targetPosition) {
+		if (possibleMoves.isEmpty()) {
+			return Optional.empty();
+		}
 
-    public HexGameService() {
-        super(
-            new HexGameBoard(5),
-            new AStarCatMovement(new HexGameBoard(5)),
-            new H2GameRepository(),
-            () -> UUID.randomUUID().toString(),
-            (size) -> new HexGameBoard(size),
-            (gameId) -> new HexGameState(gameId, 5)
-        );
+		Function<HexPosition, Double> heuristicFunction = getHeuristicFunction(targetPosition);
+
+		return possibleMoves.stream()
+			.min(Comparator.comparing(heuristicFunction::apply));
+	}
+	
+	public double getDistanceToBorder(HexPosition position) {
+        return Math.min(
+			Math.min(board.getSize() - Math.abs(position.getQ()),
+				board.getSize() - Math.abs(position.getR())),
+			Math.abs(position.getS()));
     }
+	
+	@Override
+	protected Function<HexPosition, Double> getHeuristicFunction(HexPosition targetPosition) {
+		return (_position) -> {
+			Set<HexPosition> blockedPositions = board.getBlockedPositions();
+			double blockedPositionsWeight = blockedPositions.stream()
+				.map((__position) -> __position.distanceTo(_position))
+				.reduce(0.0, Double::sum);
+			
+			return Math.max(0, getDistanceToBorder(_position) - (blockedPositionsWeight / (2 * blockedPositions.size() * board.getSize())));
+		};
+	}
+	
+	@Override
+	protected Predicate<HexPosition> getGoalPredicate() {
+		return (_position) -> {
+			return _position.isAtBorder(board.getSize());
+		};
+	}
+	
+	@Override
+	protected double getMoveCost(HexPosition from, HexPosition to) {
+		return 1.0;
+	}
+	
+	@Override
+	public boolean hasPathToGoal(HexPosition currentPosition) {
+		return !getFullPath(currentPosition, null).isEmpty();
+	}
+	
+	private List<HexPosition> reconstructPath(AStarNode goalNode) {
+		List<HexPosition> path = new LinkedList<>();
+		AStarNode currentNode = goalNode;
 
-    public HexGameState createGame(int boardSize, String difficulty, Map<String, Object> options) {
-        if (boardSize <= 2) boardSize = 3;
-        String gameId = UUID.randomUUID().toString();
-        HexGameState gameState = new HexGameState(gameId, boardSize);
-        gameState.setDifficulty(difficulty);
-        gameRepository.save(gameState);
-        return gameState;
-    }
+		while (currentNode.parent != null) {
+			path.add(currentNode.position);
 
-    @SuppressWarnings("unchecked")
-    public Optional<HexGameState> getGameState(String gameId) {
-        return gameRepository.findById(gameId).map(gs -> (HexGameState) gs);
-    }
+			currentNode = currentNode.parent;
+		}
 
-    /**
-     * Ejecuta la jugada del jugador:
-     * - Bloquea la celda si es válida.
-     * - Mueve el gato automáticamente usando la estrategia AStar.
-     * - Actualiza el estado (gana/pierde/continúa).
-     * - Guarda el estado y lo retorna.
-     */
-    public Optional<HexGameState> executePlayerMove(String gameId, HexPosition position, String playerId) {
-        Optional<HexGameState> optional = getGameState(gameId);
-        if (optional.isEmpty()) return Optional.empty();
-        HexGameState gameState = optional.get();
+		Collections.reverse(path);
+		return path;
+	}
+	
+	@Override
+	public List<HexPosition> getFullPath(HexPosition currentPosition, HexPosition targetPosition) {
+		PriorityQueue<AStarNode> openSet = new PriorityQueue<>(Comparator.comparing((_Node) -> _Node.fScore));
+		Set<HexPosition> closedSet = new HashSet<>();
+		Map<HexPosition, AStarNode> allNodes = new HashMap<>();
 
-        if (gameState.getStatus() != GameStatus.IN_PROGRESS) {
-            return Optional.of(gameState);
-        }
+		Function<HexPosition, Double> heuristicFunction = getHeuristicFunction(targetPosition);
 
-        HexGameBoard board = gameState.getGameBoard();
-        HexPosition cat = gameState.getCatPosition();
+		AStarNode startNode = new AStarNode(currentPosition, 0, heuristicFunction.apply(currentPosition), null);
+		openSet.offer(startNode);
+		allNodes.put(currentPosition, startNode);
 
-        // Validar movimiento: no se puede bloquear donde está el gato o una celda bloqueada
-        if (cat.equals(position) || board.isBlocked(position)) {
-            return Optional.of(gameState);
-        }
+		do {
+			AStarNode currentNode = openSet.poll();
 
-        // Bloquear la celda (agrega al set de bloqueadas)
-        board.getBlockedPositions().add(position);
+			if (currentNode.position.equals(targetPosition) || getGoalPredicate().test(currentNode.position)) {
+				return reconstructPath(currentNode);
+			}
 
-        // Mover el gato automáticamente usando la estrategia AStarCatMovement
-        AStarCatMovement movementStrategy = new AStarCatMovement(board);
-        List<HexPosition> path = movementStrategy.getFullPath(cat, null);
+			closedSet.add(currentNode.position);
 
-        if (path.isEmpty()) {
-            // El gato no puede moverse: el jugador ganó
-            gameState.setCatPosition(cat); // Esto fuerza updateGameStatus()
-        } else {
-            HexPosition nextCat = path.get(0); // El primer paso del camino es el siguiente movimiento
-            gameState.setCatPosition(nextCat); // Esto actualiza el estado internamente si corresponde
-        }
+			for (HexPosition neighbourPosition : getPossibleMoves(currentNode.position)) {
+				if (closedSet.contains(neighbourPosition)) continue;
 
-        gameState.setMoveCount(gameState.getMoveCount() + 1);
-        gameRepository.save(gameState);
+				double neighbourGScore = currentNode.gScore + getMoveCost(currentNode.position, neighbourPosition);
 
-        return Optional.of(gameState);
-    }
+				if (!allNodes.containsKey(neighbourPosition) || neighbourGScore < allNodes.get(neighbourPosition).gScore) {
+					double neighbourFScore = neighbourGScore + heuristicFunction.apply(neighbourPosition);
 
-    @Override
-    public Optional<HexPosition> getSuggestedMove(String gameId) {
-        throw new UnsupportedOperationException("No implementado aún");
-    }
+					AStarNode neighbourNode = new AStarNode(neighbourPosition, neighbourGScore, neighbourFScore, currentNode);
 
-    // Otros métodos sin implementar...
+					allNodes.put(neighbourPosition, neighbourNode);
+					openSet.offer(neighbourNode);
+				}
+			}
+		} while (!openSet.isEmpty());
+
+		return Collections.emptyList();
+	}
+
+	/**
+	 * Método público para obtener el siguiente movimiento óptimo del gato.
+	 */
+	public Optional<HexPosition> getNextMove(HexPosition currentPosition) {
+		List<HexPosition> path = getFullPath(currentPosition, null);
+		if (path == null || path.isEmpty()) return Optional.empty();
+		return Optional.of(path.get(0));
+	}
+	
+	private static class AStarNode {
+		public final HexPosition position;
+		public final double gScore; // Costo desde inicio
+		public final double fScore; // gScore + heurística
+		public final AStarNode parent;
+		
+		public AStarNode(HexPosition position, double gScore, double fScore, AStarNode parent) {
+			this.position = position;
+			this.gScore = gScore;
+			this.fScore = fScore;
+			this.parent = parent;
+		}
+	}
+	
+	@Override
+	protected void beforeMovementCalculation(HexPosition currentPosition) {
+		super.beforeMovementCalculation(currentPosition);
+	}
+	
+	@Override
+	protected void afterMovementCalculation(Optional<HexPosition> selectedMove) {
+		super.afterMovementCalculation(selectedMove);
+	}
 }
