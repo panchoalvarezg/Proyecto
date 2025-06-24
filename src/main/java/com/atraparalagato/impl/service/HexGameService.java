@@ -1,56 +1,54 @@
 package com.atraparalagato.impl.service;
 
 import com.atraparalagato.base.service.GameService;
-import com.atraparalagato.base.model.Position;
-import com.atraparalagato.base.model.GameBoard;
-import com.atraparalagato.base.model.GameState;
+import com.atraparalagato.base.model.*;
 import com.atraparalagato.base.strategy.CatMovementStrategy;
 import com.atraparalagato.base.repository.DataRepository;
+import com.atraparalagato.impl.model.HexPosition;
 
-import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
-/**
- * Paradigma: Programación Orientada a Objetos y Buenas Prácticas
- */
-public class HexGameService extends GameService {
-    private final GameBoard board;
-    private final GameState state;
-    private final CatMovementStrategy catStrategy;
-    private final DataRepository<GameState> repository;
+public class HexGameService extends GameService<HexPosition> {
 
-    public HexGameService(GameBoard board, GameState state, CatMovementStrategy catStrategy, DataRepository<GameState> repository) {
-        this.board = board;
-        this.state = state;
-        this.catStrategy = catStrategy;
-        this.repository = repository;
+    public HexGameService(
+        GameBoard<HexPosition> gameBoard,
+        CatMovementStrategy<HexPosition> movementStrategy,
+        DataRepository<GameState<HexPosition>, String> gameRepository,
+        Supplier<String> gameIdGenerator,
+        Function<Integer, GameBoard<HexPosition>> boardFactory,
+        Function<String, GameState<HexPosition>> gameStateFactory
+    ) {
+        super(gameBoard, movementStrategy, gameRepository, gameIdGenerator, boardFactory, gameStateFactory);
     }
 
     @Override
-    public void initializeGame(Map<String, Object> params) {
-        // POO: inicialización
+    protected void initializeGame(GameState<HexPosition> gameState, GameBoard<HexPosition> board) {
+        // Implementa la inicialización del juego
     }
 
     @Override
-    public boolean isValidMove(Position from, Position to) {
-        // POO: validación del movimiento
-        return board.isValidMove(from, to) && !state.isGameFinished();
-    }
-
-    @Override
-    public Position getSuggestedMove(Position catPosition) {
-        // Orquestación: usa la estrategia
-        return catStrategy.selectBestMove(catPosition, board);
-    }
-
-    @Override
-    public Position getTargetPosition() {
-        // POO: por ejemplo, devuelve el borde más cercano
+    protected HexPosition getTargetPosition(GameState<HexPosition> gameState) {
+        // Implementa la lógica para obtener la posición objetivo del gato
         return null;
     }
 
     @Override
-    public Map<String, Object> getGameStatistics() {
-        // POO: recopila datos de estado
-        return state.getSerializableState();
+    public Object getGameStatistics(String gameId) {
+        // Implementa las estadísticas del juego
+        return null;
+    }
+
+    @Override
+    public boolean isValidMove(String gameId, HexPosition position) {
+        // Implementa la validación de movimientos
+        return false;
+    }
+
+    @Override
+    public Optional<HexPosition> getSuggestedMove(String gameId) {
+        // Implementa sugerencias de movimiento
+        return Optional.empty();
     }
 }
