@@ -1,43 +1,59 @@
 package com.atraparalagato.impl.strategy;
 
 import com.atraparalagato.base.strategy.CatMovementStrategy;
-import com.atraparalagato.base.model.Position;
+import com.atraparalagato.impl.model.HexPosition;
 import com.atraparalagato.base.model.GameBoard;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
-/**
- * Paradigma: POO + Funcional (predicados para meta, movimientos)
- */
-public class BFSCatMovement extends CatMovementStrategy {
-    @Override
-    public List<Position> getPossibleMoves(Position from, GameBoard board) {
-        return board.getAdjacentPositions(from).stream().filter(pos -> !board.isBlocked(pos)).collect(Collectors.toList());
+public class BFSCatMovement extends CatMovementStrategy<HexPosition> {
+
+    public BFSCatMovement(GameBoard<HexPosition> board) {
+        super(board);
     }
 
     @Override
-    public Position selectBestMove(Position from, GameBoard board) {
-        List<Position> path = getFullPath(from, board);
-        if (path.size() > 1) return path.get(1);
-        return from;
+    protected List<HexPosition> getPossibleMoves(HexPosition currentPosition) {
+        // Implementa lógica BFS aquí
+        return List.of();
     }
 
     @Override
-    public boolean hasPathToGoal(Position from, GameBoard board) {
-        return !getFullPath(from, board).isEmpty();
+    protected Optional<HexPosition> selectBestMove(List<HexPosition> possibleMoves, HexPosition currentPosition, HexPosition targetPosition) {
+        // Implementa lógica BFS aquí
+        return possibleMoves.stream().findFirst();
     }
 
     @Override
-    public List<Position> getFullPath(Position from, GameBoard board) {
-        Predicate<Position> isGoal = pos -> {
-            HexPosition hp = (HexPosition) pos;
-            int size = ((HexGameBoard)board).getSize();
-            return hp.getQ() == 0 || hp.getQ() == size-1 || hp.getR() == 0 || hp.getR() == size-1;
-        };
-        // Implementación BFS aquí
-        // ...
-        return new ArrayList<>(); // TODO: implementar
+    protected Function<HexPosition, Double> getHeuristicFunction(HexPosition targetPosition) {
+        // BFS normalmente no usa heurística, pero debes devolver una función (por ejemplo, siempre 0.0)
+        return pos -> 0.0;
+    }
+
+    @Override
+    protected Predicate<HexPosition> getGoalPredicate() {
+        // Implementa el predicado de objetivo para BFS
+        return pos -> true;
+    }
+
+    @Override
+    protected double getMoveCost(HexPosition from, HexPosition to) {
+        // BFS normalmente considera todos los costos iguales (1.0)
+        return 1.0;
+    }
+
+    @Override
+    public boolean hasPathToGoal(HexPosition currentPosition) {
+        // Implementa lógica adecuada
+        return false;
+    }
+
+    @Override
+    public List<HexPosition> getFullPath(HexPosition currentPosition, HexPosition targetPosition) {
+        // Implementa lógica adecuada
+        return List.of();
     }
 }
