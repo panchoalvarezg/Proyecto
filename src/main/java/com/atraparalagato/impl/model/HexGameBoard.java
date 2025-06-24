@@ -44,9 +44,9 @@ public class HexGameBoard extends GameBoard<HexPosition> {
 
     @Override
     public List<HexPosition> getAdjacentPositions(HexPosition position) {
-        int[][] directions = {{1,0},{0,1},{-1,1},{-1,0},{0,-1},{1,-1}};
+        int[][] dirs = {{1,0},{0,1},{-1,1},{-1,0},{0,-1},{1,-1}};
         List<HexPosition> adj = new ArrayList<>();
-        for (int[] d : directions) {
+        for (int[] d : dirs) {
             HexPosition neighbor = new HexPosition(position.getQ() + d[0], position.getR() + d[1]);
             if (isPositionInBounds(neighbor) && !isBlocked(neighbor)) adj.add(neighbor);
         }
