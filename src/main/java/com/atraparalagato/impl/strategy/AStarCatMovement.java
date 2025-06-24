@@ -1,63 +1,59 @@
 package com.atraparalagato.impl.strategy;
 
 import com.atraparalagato.base.strategy.CatMovementStrategy;
-import com.atraparalagato.base.model.Position;
+import com.atraparalagato.impl.model.HexPosition;
 import com.atraparalagato.base.model.GameBoard;
 
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
-/**
- * Paradigma: POO + Funcional (heurísticas, predicados y caminos)
- */
-public class AStarCatMovement extends CatMovementStrategy {
-    @Override
-    public List<Position> getPossibleMoves(Position from, GameBoard board) {
-        return board.getAdjacentPositions(from).stream().filter(pos -> !board.isBlocked(pos)).collect(Collectors.toList());
+public class AStarCatMovement extends CatMovementStrategy<HexPosition> {
+
+    public AStarCatMovement(GameBoard<HexPosition> board) {
+        super(board);
     }
 
     @Override
-    public Position selectBestMove(Position from, GameBoard board) {
-        // A*: POO (estructura) + funcional (heurística)
-        List<Position> path = getFullPath(from, board);
-        if (path.size() > 1) return path.get(1); // el primer paso tras la posición actual
-        return from;
+    protected List<HexPosition> getPossibleMoves(HexPosition currentPosition) {
+        // Implementación concreta
+        return List.of();
     }
 
     @Override
-    protected Function<Position, Double> getHeuristicFunction(Position target) {
-        // Funcional: lambda para distancia Manhattan
-        return (Position p) -> {
-            int dq = ((HexPosition) p).getQ() - ((HexPosition) target).getQ();
-            int dr = ((HexPosition) p).getR() - ((HexPosition) target).getR();
-            return (double)(Math.abs(dq) + Math.abs(dr));
-        };
+    protected Optional<HexPosition> selectBestMove(List<HexPosition> possibleMoves, HexPosition currentPosition, HexPosition targetPosition) {
+        // Implementación concreta
+        return possibleMoves.stream().findFirst(); // Ejemplo base
     }
 
     @Override
-    protected Predicate<Position> getGoalPredicate(GameBoard board) {
-        // Funcional: lambda para detectar si es borde
-        return pos -> {
-            HexPosition hp = (HexPosition) pos;
-            int size = ((HexGameBoard)board).getSize();
-            return hp.getQ() == 0 || hp.getQ() == size-1 || hp.getR() == 0 || hp.getR() == size-1;
-        };
+    protected Function<HexPosition, Double> getHeuristicFunction(HexPosition targetPosition) {
+        // Implementación concreta (ejemplo: distancia hexagonal)
+        return pos -> pos.distanceTo(targetPosition);
     }
 
     @Override
-    public boolean hasPathToGoal(Position from, GameBoard board) {
-        return !getFullPath(from, board).isEmpty();
+    protected Predicate<HexPosition> getGoalPredicate() {
+        // Implementación concreta (ejemplo: llegar a un borde)
+        return pos -> true;
     }
 
     @Override
-    public List<Position> getFullPath(Position from, GameBoard board) {
-        // POO: estructura A*; Funcional: heurísticas y predicados
-        Predicate<Position> goal = getGoalPredicate(board);
-        Function<Position, Double> heuristic = getHeuristicFunction(from);
+    protected double getMoveCost(HexPosition from, HexPosition to) {
+        // Implementación concreta (ejemplo: costo fijo 1)
+        return 1.0;
+    }
 
-        // ... Implementación A* (puedes completarla)
-        return new ArrayList<>(); // TODO: implementar
+    @Override
+    public boolean hasPathToGoal(HexPosition currentPosition) {
+        // Implementación concreta
+        return false;
+    }
+
+    @Override
+    public List<HexPosition> getFullPath(HexPosition currentPosition, HexPosition targetPosition) {
+        // Implementación concreta
+        return List.of();
     }
 }
