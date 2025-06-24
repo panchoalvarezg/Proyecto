@@ -69,8 +69,7 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
 
         if (maybeNextPos.isEmpty()) {
             // El gato no puede moverse: el jugador ganó
-            // setStatus es protected, pero setCatPosition fuerza updateGameStatus
-            gameState.setCatPosition(cat);
+            gameState.setCatPosition(cat); // Esto fuerza updateGameStatus()
         } else {
             HexPosition nextCat = maybeNextPos.get();
             gameState.setCatPosition(nextCat); // Esto actualiza el estado internamente si corresponde
@@ -82,5 +81,10 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
         return Optional.of(gameState);
     }
 
-    // ... el resto de métodos sin implementar ...
+    @Override
+    public Optional<HexPosition> getSuggestedMove(String gameId) {
+        throw new UnsupportedOperationException("No implementado aún");
+    }
+
+    // Otros métodos sin implementar...
 }
