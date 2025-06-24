@@ -1,73 +1,61 @@
 package com.atraparalagato.impl.service;
 
-import com.atraparalagato.base.model.GameState;
+import com.atraparalagato.base.service.GameService;
 import com.atraparalagato.impl.model.HexGameState;
 import com.atraparalagato.impl.model.HexPosition;
-import org.springframework.stereotype.Service;
+import com.atraparalagato.impl.model.HexGameBoard;
+import com.atraparalagato.impl.strategy.CatMovementStrategy;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
 
-@Service
-public class HexGameService {
+/**
+ * Servicio principal para el juego hexagonal.
+ */
+public class HexGameService extends GameService<HexGameState, HexPosition> {
 
-    private final Map<String, GameState<HexPosition>> games = new ConcurrentHashMap<>();
+    private final CatMovementStrategy<HexPosition> catStrategy;
 
-    /**
-     * Inicia un nuevo juego y lo registra en el mapa.
-     * @param boardSize Tamaño del tablero.
-     * @return El estado inicial del juego.
-     */
-    public GameState<HexPosition> startNewGame(int boardSize) {
-        String gameId = UUID.randomUUID().toString();
-        GameState<HexPosition> gameState = new HexGameState(gameId, boardSize);
-        games.put(gameId, gameState);
-        return gameState;
+    public HexGameService(CatMovementStrategy<HexPosition> catStrategy) {
+        this.catStrategy = catStrategy;
     }
 
-    /**
-     * Ejecuta el movimiento del jugador (bloqueo de celda) y mueve el gato en el juego correspondiente.
-     * @param gameId ID del juego
-     * @param position Posición a bloquear por el jugador
-     * @return Estado actualizado del juego, si existe el juego.
-     */
-    public Optional<GameState<HexPosition>> executePlayerMove(String gameId, HexPosition position) {
-        GameState<HexPosition> gameState = games.get(gameId);
-        if (gameState == null) {
-            return Optional.empty();
-        }
-        if (gameState instanceof HexGameState hexGameState) {
-            // 1. Bloquea la celda seleccionada por el usuario
-            hexGameState.blockCell(position);
-
-            // 2. Verifica si el jugador ha ganado (el gato está atrapado)
-            hexGameState.updateGameStatus();
-            if (hexGameState.isGameFinished()) {
-                return Optional.of(gameState);
-            }
-
-            // 3. Mueve el gato a un vecino libre (simple: primer vecino libre)
-            HexPosition cat = hexGameState.getCatPosition();
-            List<HexPosition> neighbors = hexGameState.getFreeNeighbors(cat);
-
-            if (!neighbors.isEmpty()) {
-                // Mueve el gato a la primera celda libre adyacente
-                HexPosition nextCat = neighbors.get(0);
-                hexGameState.setCatPosition(nextCat);
-            }
-
-            // 4. Actualiza el estado del juego después de mover el gato
-            hexGameState.updateGameStatus();
-        }
-        return Optional.of(gameState);
+    @Override
+    public HexGameState startNewGame(String gameId, int boardSize) {
+        return new HexGameState(gameId, boardSize);
     }
 
-    /**
-     * Permite consultar el estado actual de un juego por su ID.
-     * @param gameId ID del juego
-     * @return Optional con el estado del juego si existe.
-     */
-    public Optional<GameState<HexPosition>> getGameState(String gameId) {
-        return Optional.ofNullable(games.get(gameId));
+    @Override
+    public boolean blockCell(HexGameState state, HexPosition pos) {
+        if (state.getGameBoard().isValidMove(pos)) {
+            state.getGameBoard().blockedPositions.add(pos);
+            state.updateGameStatus();
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public HexPosition moveCat(HexGameState state) {
+        HexPosition current = state.getCatPosition();
+        HexGameBoard board = state.getGameBoard();
+        HexPosition next = catStrategy.selectMove(board, current, board::isAtBorder);
+        if (!next.equals(current)) {
+            state.setCatPosition(next);
+        }
+        return next;
+    }
+
+    @Override
+    public boolean isGameOver(HexGameState state) {
+        return state.isGameFinished();
+    }
+
+    @Override
+    public boolean hasPlayerWon(HexGameState state) {
+        return state.hasPlayerWon();
+    }
+
+    public Set<HexPosition> getBlockedPositions(HexGameState state) {
+        return state.getBlockedPositions();
     }
 }
