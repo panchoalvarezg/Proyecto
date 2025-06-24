@@ -1,70 +1,61 @@
 package com.atraparalagato.impl.model;
 
 import com.atraparalagato.base.model.GameState;
-import com.atraparalagato.base.model.Position;
 
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Paradigma: Programación Orientada a Objetos
- */
-public class HexGameState extends GameState {
+public class HexGameState extends GameState<HexPosition> {
     private HexPosition catPosition;
-    private boolean finished;
     private boolean playerWon;
     private int score;
 
-    public HexGameState(HexPosition initialCatPosition) {
+    public HexGameState(String gameId, HexPosition initialCatPosition) {
+        super(gameId);
         this.catPosition = initialCatPosition;
-        this.finished = false;
         this.playerWon = false;
         this.score = 0;
     }
 
     @Override
-    public boolean canExecuteMove(Position from, Position to) {
-        // POO: lógica de validación
-        return !finished;
+    protected boolean canExecuteMove(HexPosition position) {
+        return status == GameStatus.IN_PROGRESS && !catPosition.equals(position);
     }
 
     @Override
-    public void performMove(Position from, Position to) {
-        // POO: lógica de movimiento
-        this.catPosition = (HexPosition) to;
-        updateGameStatus();
+    protected boolean performMove(HexPosition position) {
+        if (!canExecuteMove(position)) return false;
+        setCatPosition(position);
+        return true;
     }
 
     @Override
-    public void updateGameStatus() {
-        // POO: lógica para victoria/derrota y score
-        if (isAtEdge(catPosition)) {
-            finished = true;
-            playerWon = false;
-        } else if (/* lógica de bloqueo */ false) {
-            finished = true;
+    protected void updateGameStatus() {
+        // Ejemplo: lógica básica, puedes mejorarla
+        if (!catPosition.isWithinBounds(11)) { // Suponiendo un tablero de 11x11
+            status = GameStatus.PLAYER_WON;
             playerWon = true;
+        } else if (/* condición de perder */ false) {
+            status = GameStatus.PLAYER_LOST;
+            playerWon = false;
+        } else {
+            status = GameStatus.IN_PROGRESS;
         }
     }
 
-    public boolean isAtEdge(HexPosition pos) {
-        int size = 11; // TODO: parametrizar
-        return pos.getQ() == 0 || pos.getQ() == size-1 || pos.getR() == 0 || pos.getR() == size-1;
-    }
-
     @Override
-    public Position getCatPosition() {
+    public HexPosition getCatPosition() {
         return catPosition;
     }
 
     @Override
-    public void setCatPosition(Position catPosition) {
-        this.catPosition = (HexPosition) catPosition;
+    public void setCatPosition(HexPosition position) {
+        this.catPosition = position;
     }
 
     @Override
     public boolean isGameFinished() {
-        return finished;
+        return status != GameStatus.IN_PROGRESS;
     }
 
     @Override
@@ -74,31 +65,33 @@ public class HexGameState extends GameState {
 
     @Override
     public int calculateScore() {
-        // POO: lógica de puntuación
         return score;
     }
 
     @Override
-    public Map<String, Object> getSerializableState() {
-        // POO: serialización del estado
-        Map<String, Object> state = new HashMap<>();
-        state.put("catPositionQ", catPosition.getQ());
-        state.put("catPositionR", catPosition.getR());
-        state.put("finished", finished);
-        state.put("playerWon", playerWon);
-        state.put("score", score);
-        return state;
+    public Object getSerializableState() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("catQ", catPosition.getQ());
+        map.put("catR", catPosition.getR());
+        map.put("playerWon", playerWon);
+        map.put("score", score);
+        map.put("status", status.name());
+        map.put("moveCount", moveCount);
+        map.put("gameId", gameId);
+        map.put("createdAt", createdAt);
+        return map;
     }
 
     @Override
-    public void restoreFromSerializable(Map<String, Object> state) {
-        // POO: restaurar estado
-        this.catPosition = new HexPosition(
-                (int) state.get("catPositionQ"),
-                (int) state.get("catPositionR")
-        );
-        this.finished = (boolean) state.get("finished");
-        this.playerWon = (boolean) state.get("playerWon");
-        this.score = (int) state.get("score");
+    public void restoreFromSerializable(Object serializedState) {
+        if (!(serializedState instanceof Map)) return;
+        Map<?, ?> map = (Map<?, ?>) serializedState;
+        int q = (int) map.get("catQ");
+        int r = (int) map.get("catR");
+        this.catPosition = new HexPosition(q, r);
+        this.playerWon = (boolean) map.get("playerWon");
+        this.score = (int) map.get("score");
+        this.status = GameStatus.valueOf((String) map.get("status"));
+        // moveCount, gameId, createdAt pueden restaurarse si lo necesitas
     }
 }
