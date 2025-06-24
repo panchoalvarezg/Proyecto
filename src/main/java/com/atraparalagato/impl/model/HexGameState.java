@@ -17,8 +17,9 @@ public class HexGameState extends GameState<HexPosition> {
     public HexGameState(String gameId, int boardSize) {
         super(gameId);
         this.boardSize = boardSize;
-        // Centra el gato en el tablero
-        this.catPosition = new HexPosition(boardSize / 2, boardSize / 2);
+        // Corregido: centra el gato en el tablero para cualquier tamaño (tanto impar como par)
+        int center = (boardSize - 1) / 2;
+        this.catPosition = new HexPosition(center, center);
         this.playerWon = false;
         this.score = 0;
     }
