@@ -1,67 +1,92 @@
 package com.atraparalagato.impl.model;
 
+import com.atraparalagato.base.model.GameBoard;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
-public class HexGameBoard {
-    private int width;
-    private int height;
-    private Set<HexPosition> blockedPositions;
+/**
+ * Implementación de GameBoard para tablero hexagonal.
+ */
+public class HexGameBoard extends GameBoard<HexPosition> {
 
-    public HexGameBoard(int width, int height, Set<HexPosition> blockedPositions) {
-        this.width = width;
-        this.height = height;
-        this.blockedPositions = blockedPositions != null ? new HashSet<>(blockedPositions) : new HashSet<>();
+    public HexGameBoard(int size) {
+        super(size);
     }
 
-    public boolean isPositionInBounds(HexPosition pos) {
-        int x = pos.getX();
-        int y = pos.getY();
-        return x >= 0 && x < width && y >= 0 && y < height;
+    @Override
+    protected Set<HexPosition> initializeBlockedPositions() {
+        return new HashSet<>();
     }
 
-    public boolean isValidMove(HexPosition from, HexPosition to) {
-        return isPositionInBounds(to) && !blockedPositions.contains(to) && getAdjacentPositions(from).contains(to);
+    @Override
+    public boolean isPositionInBounds(HexPosition position) {
+        return Math.abs(position.getQ()) <= size &&
+               Math.abs(position.getR()) <= size &&
+               Math.abs(position.getS()) <= size;
     }
 
-    public boolean executeMove(HexPosition from, HexPosition to) {
-        if (!isValidMove(from, to)) return false;
-        // Aquí podrías actualizar estado si es necesario
-        return true;
+    @Override
+    protected boolean isValidMove(HexPosition position) {
+        return isPositionInBounds(position) &&
+               !isAtBorder(position) &&
+               !isBlocked(position);
     }
 
-    public List<HexPosition> getPositionsWhere(Predicate<HexPosition> predicate) {
-        List<HexPosition> result = new ArrayList<>();
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
-                HexPosition pos = new HexPosition(x, y);
-                if (predicate.test(pos)) result.add(pos);
+    @Override
+    protected void executeMove(HexPosition position) {
+        blockedPositions.add(position);
+    }
+
+    @Override
+    public List<HexPosition> getPositionsWhere(Predicate<HexPosition> condition) {
+        return getAllPossiblePositions().stream()
+                .filter(condition)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<HexPosition> getAdjacentPositions(HexPosition position) {
+        HexPosition[] directions = {
+            new HexPosition(1, 0),
+            new HexPosition(1, -1),
+            new HexPosition(0, -1),
+            new HexPosition(-1, 0),
+            new HexPosition(-1, 1),
+            new HexPosition(0, 1)
+        };
+        return Arrays.stream(directions)
+                .map(position::add)
+                .filter(this::isPositionInBounds)
+                .filter(pos -> !isBlocked(pos))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public boolean isBlocked(HexPosition position) {
+        return blockedPositions.contains(position);
+    }
+
+    public boolean isAtBorder(HexPosition position) {
+        return Math.abs(position.getQ()) == size ||
+               Math.abs(position.getR()) == size ||
+               Math.abs(position.getS()) == size;
+    }
+
+    private List<HexPosition> getAllPossiblePositions() {
+        List<HexPosition> positions = new ArrayList<>();
+        for (int q = -size + 1; q < size; q++) {
+            for (int r = -size + 1; r < size; r++) {
+                HexPosition pos = new HexPosition(q, r);
+                if (isPositionInBounds(pos) && !isAtBorder(pos)) {
+                    positions.add(pos);
+                }
             }
         }
-        return result;
+        return positions;
     }
 
-    public List<HexPosition> getAdjacentPositions(HexPosition pos) {
-        // Hex grid adjacency calculation (6 directions)
-        int[][] directions = {{1,0},{-1,0},{0,1},{0,-1},{1,-1},{-1,1}};
-        List<HexPosition> adj = new ArrayList<>();
-        for (int[] dir : directions) {
-            HexPosition p = new HexPosition(pos.getX() + dir[0], pos.getY() + dir[1]);
-            if (isPositionInBounds(p) && !blockedPositions.contains(p)) adj.add(p);
-        }
-        return adj;
+    public Set<HexPosition> getBlockedPositions() {
+        return Collections.unmodifiableSet(blockedPositions);
     }
-
-    public boolean isBlocked(HexPosition pos) {
-        return blockedPositions.contains(pos);
-    }
-
-    public void setBlocked(HexPosition pos, boolean blocked) {
-        if (blocked) blockedPositions.add(pos);
-        else blockedPositions.remove(pos);
-    }
-
-    public int getWidth() { return width; }
-    public int getHeight() { return height; }
-    public Set<HexPosition> getBlockedPositions() { return Collections.unmodifiableSet(blockedPositions); }
 }
