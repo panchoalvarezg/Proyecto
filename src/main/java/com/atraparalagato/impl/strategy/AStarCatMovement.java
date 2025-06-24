@@ -1,59 +1,73 @@
 package com.atraparalagato.impl.strategy;
 
-import com.atraparalagato.base.strategy.CatMovementStrategy;
-import com.atraparalagato.impl.model.HexPosition;
-import com.atraparalagato.base.model.GameBoard;
+import com.atraparalagato.impl.model.*;
+import java.util.*;
+import java.util.function.*;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.function.Function;
-import java.util.function.Predicate;
-
-public class AStarCatMovement extends CatMovementStrategy<HexPosition> {
-
-    public AStarCatMovement(GameBoard<HexPosition> board) {
-        super(board);
+public class AStarCatMovement {
+    public List<HexPosition> getPossibleMoves(HexGameBoard board, HexPosition from) {
+        return board.getAdjacentPositions(from);
     }
 
-    @Override
-    protected List<HexPosition> getPossibleMoves(HexPosition currentPosition) {
-        // Implementación concreta
-        return List.of();
+    public HexPosition selectBestMove(HexGameBoard board, HexPosition from, Predicate<HexPosition> goal) {
+        List<HexPosition> path = getFullPath(board, from, goal);
+        if (path.size() > 1) return path.get(1);
+        return from;
     }
 
-    @Override
-    protected Optional<HexPosition> selectBestMove(List<HexPosition> possibleMoves, HexPosition currentPosition, HexPosition targetPosition) {
-        // Implementación concreta
-        return possibleMoves.stream().findFirst(); // Ejemplo base
+    public ToIntFunction<HexPosition> getHeuristicFunction(HexPosition goal) {
+        return pos -> Math.abs(goal.getX() - pos.getX()) + Math.abs(goal.getY() - pos.getY());
     }
 
-    @Override
-    protected Function<HexPosition, Double> getHeuristicFunction(HexPosition targetPosition) {
-        // Implementación concreta (ejemplo: distancia hexagonal)
-        return pos -> pos.distanceTo(targetPosition);
+    public Predicate<HexPosition> getGoalPredicate(HexGameBoard board) {
+        return pos -> {
+            int x = pos.getX(), y = pos.getY();
+            return x == 0 || y == 0 || x == board.getWidth()-1 || y == board.getHeight()-1;
+        };
     }
 
-    @Override
-    protected Predicate<HexPosition> getGoalPredicate() {
-        // Implementación concreta (ejemplo: llegar a un borde)
-        return pos -> true;
+    public boolean hasPathToGoal(HexGameBoard board, HexPosition from, Predicate<HexPosition> goalPredicate) {
+        return !getFullPath(board, from, goalPredicate).isEmpty();
     }
 
-    @Override
-    protected double getMoveCost(HexPosition from, HexPosition to) {
-        // Implementación concreta (ejemplo: costo fijo 1)
-        return 1.0;
+    public List<HexPosition> getFullPath(HexGameBoard board, HexPosition from, Predicate<HexPosition> goalPredicate) {
+        PriorityQueue<Node> open = new PriorityQueue<>(Comparator.comparingInt(n -> n.f));
+        Map<HexPosition, Integer> gScore = new HashMap<>();
+        Map<HexPosition, HexPosition> cameFrom = new HashMap<>();
+        Set<HexPosition> closed = new HashSet<>();
+        open.add(new Node(from, 0, 0));
+        gScore.put(from, 0);
+        while (!open.isEmpty()) {
+            Node curr = open.poll();
+            if (goalPredicate.test(curr.pos)) {
+                // Reconstruir camino
+                List<HexPosition> path = new ArrayList<>();
+                HexPosition step = curr.pos;
+                while (step != null) {
+                    path.add(step);
+                    step = cameFrom.get(step);
+                }
+                Collections.reverse(path);
+                return path;
+            }
+            closed.add(curr.pos);
+            for (HexPosition neighbor : board.getAdjacentPositions(curr.pos)) {
+                if (closed.contains(neighbor)) continue;
+                int tentative = gScore.get(curr.pos) + 1;
+                if (tentative < gScore.getOrDefault(neighbor, Integer.MAX_VALUE)) {
+                    cameFrom.put(neighbor, curr.pos);
+                    gScore.put(neighbor, tentative);
+                    int h = getHeuristicFunction(curr.pos).applyAsInt(neighbor);
+                    open.add(new Node(neighbor, tentative, tentative + h));
+                }
+            }
+        }
+        return Collections.emptyList();
     }
 
-    @Override
-    public boolean hasPathToGoal(HexPosition currentPosition) {
-        // Implementación concreta
-        return false;
-    }
-
-    @Override
-    public List<HexPosition> getFullPath(HexPosition currentPosition, HexPosition targetPosition) {
-        // Implementación concreta
-        return List.of();
+    private static class Node {
+        HexPosition pos;
+        int g, f;
+        Node(HexPosition pos, int g, int f) { this.pos = pos; this.g = g; this.f = f; }
     }
 }
