@@ -1,142 +1,90 @@
 package com.atraparalagato.impl.model;
 
-import com.atraparalagato.base.model.GameState;
+import java.io.Serializable;
+import java.util.*;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-
-public class HexGameState extends GameState<HexPosition> {
+public class HexGameState implements Serializable {
+    private HexGameBoard board;
     private HexPosition catPosition;
+    private boolean finished;
     private boolean playerWon;
     private int score;
-    private final int boardSize;
-    private final Set<HexPosition> blockedPositions = new HashSet<>();
 
-    public HexGameState(String gameId, int boardSize) {
-        super(gameId);
-        this.boardSize = boardSize;
-        // El gato inicia en la columna más a la izquierda y en el centro vertical del tablero
-        this.catPosition = new HexPosition(0, boardSize / 2);
+    public HexGameState(HexGameBoard board, HexPosition catPosition) {
+        this.board = board;
+        this.catPosition = catPosition;
+        this.finished = false;
         this.playerWon = false;
         this.score = 0;
+        updateGameStatus();
     }
 
-    @Override
-    protected boolean canExecuteMove(HexPosition position) {
-        return status == GameStatus.IN_PROGRESS
-            && !catPosition.equals(position)
-            && !blockedPositions.contains(position);
+    public boolean canExecuteMove(HexPosition from, HexPosition to) {
+        return !finished && board.isValidMove(from, to);
     }
 
-    @Override
-    protected boolean performMove(HexPosition position) {
-        // Este método puede usarse para lógica adicional de movimiento si lo deseas
-        return canExecuteMove(position);
+    public void performMove(HexPosition from, HexPosition to) {
+        if (canExecuteMove(from, to)) {
+            catPosition = to;
+            updateGameStatus();
+        }
     }
 
-    @Override
     public void updateGameStatus() {
-        // El juego solo termina cuando el gato sale del tablero (pierdes)
-        if (!catPosition.isWithinBounds(boardSize)) {
-            status = GameStatus.PLAYER_LOST;
+        // Victoria: gato en el borde
+        if (isOnEdge(catPosition)) {
+            finished = true;
             playerWon = false;
+        } else if (isCatBlocked()) {
+            finished = true;
+            playerWon = true;
         } else {
-            status = GameStatus.IN_PROGRESS;
+            finished = false;
+            playerWon = false;
         }
+        score = calculateScore();
     }
 
-    @Override
-    public HexPosition getCatPosition() {
-        return catPosition;
-    }
+    public HexPosition getCatPosition() { return catPosition; }
+    public void setCatPosition(HexPosition pos) { this.catPosition = pos; updateGameStatus(); }
 
-    @Override
-    public void setCatPosition(HexPosition position) {
-        this.catPosition = position;
-    }
+    public boolean isGameFinished() { return finished; }
+    public boolean hasPlayerWon() { return playerWon; }
 
-    @Override
-    public boolean isGameFinished() {
-        return status != GameStatus.IN_PROGRESS;
-    }
-
-    @Override
-    public boolean hasPlayerWon() {
-        return playerWon;
-    }
-
-    @Override
     public int calculateScore() {
-        return score;
+        // Ejemplo: más puntos si el jugador bloquea rápido al gato
+        return finished ? (playerWon ? 100 - getMoveCount() : 0) : 0;
     }
 
-    public Set<HexPosition> getBlockedPositions() {
-        return blockedPositions;
+    private int getMoveCount() {
+        // Implementa un contador real de movimientos si es necesario
+        return 0;
     }
 
-    public void blockCell(HexPosition pos) {
-        blockedPositions.add(pos);
+    private boolean isOnEdge(HexPosition pos) {
+        int x = pos.getX();
+        int y = pos.getY();
+        return x == 0 || y == 0 || x == board.getWidth()-1 || y == board.getHeight()-1;
     }
 
-    public int getBoardSize() {
-        return boardSize;
+    private boolean isCatBlocked() {
+        return board.getAdjacentPositions(catPosition).isEmpty();
     }
 
-    public java.util.List<HexPosition> getFreeNeighbors(HexPosition cat) {
-        int[][] dirs = {{1,0},{0,1},{-1,1},{-1,0},{0,-1},{1,-1}};
-        java.util.List<HexPosition> result = new java.util.ArrayList<>();
-        for (int[] d : dirs) {
-            HexPosition neighbor = new HexPosition(cat.getQ() + d[0], cat.getR() + d[1]);
-            if (neighbor.isWithinBounds(boardSize) && !blockedPositions.contains(neighbor)) {
-                result.add(neighbor);
-            }
-        }
-        return result;
+    // Serialización básica
+    public Map<String, Object> getSerializableState() {
+        Map<String, Object> state = new HashMap<>();
+        state.put("catPosition", catPosition);
+        state.put("finished", finished);
+        state.put("playerWon", playerWon);
+        state.put("score", score);
+        return state;
     }
 
-    @Override
-    public Object getSerializableState() {
-        Map<String, Object> map = new HashMap<>();
-        map.put("catQ", catPosition.getQ());
-        map.put("catR", catPosition.getR());
-        map.put("playerWon", playerWon);
-        map.put("score", score);
-        map.put("status", status.name());
-        map.put("moveCount", moveCount);
-        map.put("gameId", gameId);
-        map.put("createdAt", createdAt);
-        map.put("boardSize", boardSize);
-        map.put("blockedCells",
-            blockedPositions.stream()
-                .map(pos -> Map.of("q", pos.getQ(), "r", pos.getR()))
-                .toList()
-        );
-        return map;
-    }
-
-    @Override
-    public void restoreFromSerializable(Object serializedState) {
-        if (!(serializedState instanceof Map)) return;
-        Map<?, ?> map = (Map<?, ?>) serializedState;
-        int q = (int) map.get("catQ");
-        int r = (int) map.get("catR");
-        this.catPosition = new HexPosition(q, r);
-        this.playerWon = (boolean) map.get("playerWon");
-        this.score = (int) map.get("score");
-        this.status = GameStatus.valueOf((String) map.get("status"));
-        Object blocked = map.get("blockedCells");
-        if (blocked instanceof Iterable<?> iterable) {
-            for (Object o : iterable) {
-                if (o instanceof Map<?,?> posmap) {
-                    Object oq = posmap.get("q");
-                    Object or = posmap.get("r");
-                    if (oq instanceof Integer iq && or instanceof Integer ir) {
-                        blockedPositions.add(new HexPosition(iq, ir));
-                    }
-                }
-            }
-        }
+    public void restoreFromSerializable(Map<String, Object> state) {
+        this.catPosition = (HexPosition) state.get("catPosition");
+        this.finished = (Boolean) state.get("finished");
+        this.playerWon = (Boolean) state.get("playerWon");
+        this.score = (Integer) state.get("score");
     }
 }
