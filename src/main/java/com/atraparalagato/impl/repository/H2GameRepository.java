@@ -15,15 +15,20 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * ImplementaciÃ³n de DataRepository usando base de datos H2.
+ * Implementación de DataRepository usando base de datos H2.
  */
 public class H2GameRepository extends DataRepository<GameState<HexPosition>, String> {
+
+    // Deben coincidir con application.properties
+    private static final String JDBC_URL = "jdbc:h2:file:./data/atrapar-al-gato-db";
+    private static final String USER = "sa";
+    private static final String PASSWORD = "";
 
     private Connection connection;
 
     public H2GameRepository() {
         try {
-            this.connection = DriverManager.getConnection("jdbc:h2:file:./data/atrapar-al-gato-db", "sa", "password");
+            this.connection = DriverManager.getConnection(JDBC_URL, USER, PASSWORD);
             initialize();
         } catch (SQLException e) {
             e.printStackTrace();
