@@ -17,7 +17,7 @@ public class HexGameState extends GameState<HexPosition> {
     public HexGameState(String gameId, int boardSize) {
         super(gameId);
         this.boardSize = boardSize;
-        // El gato inicia en q = 0, r = boardSize / 2 (es decir, columna izquierda, centro vertical)
+        // El gato inicia en la columna más a la izquierda y en el centro vertical del tablero
         this.catPosition = new HexPosition(0, boardSize / 2);
         this.playerWon = false;
         this.score = 0;
@@ -25,8 +25,8 @@ public class HexGameState extends GameState<HexPosition> {
 
     @Override
     protected boolean canExecuteMove(HexPosition position) {
-        return status == GameStatus.IN_PROGRESS 
-            && !catPosition.equals(position) 
+        return status == GameStatus.IN_PROGRESS
+            && !catPosition.equals(position)
             && !blockedPositions.contains(position);
     }
 
