@@ -16,6 +16,7 @@ class Game {
         this.movesElement = document.getElementById('moves-count');
         this.startButton = document.getElementById('start-game');
         this.playerNameInput = document.getElementById('player-name');
+        this.gameState = null; // Store last known game state
         
         // Dependency Injection - Game depends on DOM abstractions
         this.initializeEventListeners();
@@ -34,17 +35,11 @@ class Game {
                     headers: { 'Accept': 'application/json' },
                     ...options
                 });
-                // Error handling: Throw if response is not ok
                 if (!response.ok) {
                     const text = await response.text();
                     throw new Error(`API Error: ${response.status} - ${text}`);
                 }
-                // Try/catch JSON parsing for clarity
-                try {
-                    return await response.json();
-                } catch (jsonError) {
-                    throw new Error('Respuesta JSON inválida del servidor');
-                }
+                return await response.json();
             } catch (error) {
                 console.error('API Error:', error);
                 throw error;
@@ -64,15 +59,14 @@ class Game {
             });
             
             const gameState = await apiCall();
-            // Debug: log backend response
             console.log("Respuesta backend:", gameState);
 
-            // Validar campos esperados
             if (!gameState || !gameState.gameId || !gameState.cat || typeof gameState.movesCount === "undefined" || !gameState.status) {
                 throw new Error('Respuesta inesperada del backend');
             }
 
             this.gameId = gameState.gameId;
+            this.gameState = gameState;
             this.renderBoard(gameState);
             this.updateStatus(gameState.status);
             this.updateMovesCount(gameState.movesCount || 0);
@@ -91,6 +85,11 @@ class Game {
     async makeMove(q, r) {
         if (!this.gameId) return;
         
+        // No permitir bloquear la celda donde está el gato
+        if (this.gameState && this.gameState.cat && q === this.gameState.cat.q && r === this.gameState.cat.r) {
+            return;
+        }
+        
         try {
             const apiCall = this.createApiCall(
                 `/api/game/block?gameId=${this.gameId}&q=${q}&r=${r}`, 
@@ -98,14 +97,13 @@ class Game {
             );
             
             const gameState = await apiCall();
-            // Debug: log backend move response
             console.log("Respuesta movimiento:", gameState);
 
+            this.gameState = gameState;
             this.renderBoard(gameState);
             this.updateStatus(gameState.status);
             this.updateMovesCount(gameState.movesCount || 0);
             
-            // Functional approach: Use filter to check game end conditions
             const gameEndStates = ['PLAYER_LOST', 'PLAYER_WON'];
             const isGameOver = gameEndStates.some(state => state === gameState.status);
             
@@ -129,8 +127,8 @@ class Game {
         
         // Configuration object - Modular approach with improved spacing
         const boardConfig = {
-            hexSize: 25, // Increased spacing between hexagons
-            centerX: 375, // Adjusted for new container size
+            hexSize: 25,
+            centerX: 375,
             centerY: 375,
             cellWidth: 40,
             cellHeight: 46
@@ -140,7 +138,6 @@ class Game {
         const cells = this.generateCellPositions(boardConfig)
             .map(cell => this.createHexCell(cell, gameState, boardConfig));
         
-        // Functional approach: forEach for side effects (DOM manipulation)
         cells.forEach(cell => this.board.appendChild(cell));
     }
     
@@ -173,42 +170,37 @@ class Game {
     // Factory Method Pattern: Create hex cells
     createHexCell(position, gameState, config) {
         const cell = document.createElement('div');
-        if (position.type === 'border') {
-            cell.className = 'hex-cell border-cell';
-        } else {
-            cell.className = 'hex-cell';
-        }
-        cell.style.left = `${position.x - config.cellWidth/2}px`;
-        cell.style.top = `${position.y - config.cellHeight/2}px`;
+        cell.className = position.type === 'border' ? 'hex-cell border-cell' : 'hex-cell';
+        cell.style.left = `${position.x - config.cellWidth / 2}px`;
+        cell.style.top = `${position.y - config.cellHeight / 2}px`;
         cell.setAttribute('data-q', position.q);
         cell.setAttribute('data-r', position.r);
         cell.setAttribute('data-type', position.type);
-        
-        // Defensive: Use correct cat position field and block field
+
         const isCatPosition = gameState.cat && position.q === gameState.cat.q && position.r === gameState.cat.r;
         const isBlocked = Array.isArray(gameState.blockedCells) && gameState.blockedCells.some(pos => pos.q === position.q && pos.r === position.r);
-        
+
         if (isCatPosition) {
             cell.classList.add('cat');
         } else if (isBlocked) {
             cell.classList.add('blocked');
         } else if (position.type === 'playable') {
-            // Only playable cells can be clicked
-            const moveHandler = this.createMoveHandler(position.q, position.r);
-            cell.addEventListener('click', moveHandler);
+            // Solo permite clic en casillas 'playable' que NO sean el gato
+            cell.addEventListener('click', () => this.makeMove(position.q, position.r));
+            cell.classList.add('clickable');
         }
-        
+
         if (position.type === 'border') {
             cell.style.opacity = '0.3';
             cell.style.pointerEvents = 'none';
         }
-        
+
+        // Opcional: deshabilita pointer events si es el gato
+        if (isCatPosition) {
+            cell.style.pointerEvents = 'none';
+        }
+
         return cell;
-    }
-    
-    // Higher-Order Function: Returns event handler function
-    createMoveHandler(q, r) {
-        return () => this.makeMove(q, r);
     }
     
     // Single Responsibility: Update status display only
@@ -256,7 +248,6 @@ class Game {
     }
     
     handleError(message, error) {
-        // Mejorada: muestra detalle de error si existe
         console.error(message, error);
         let msg = message;
         if (error && error.message) {
@@ -286,7 +277,6 @@ const createScoreSaver = (gameId, playerName) => async () => {
     }
 };
 
-// Global function for saving scores
 async function saveScore(gameId, playerName) {
     const scoreSaver = createScoreSaver(gameId, playerName);
     await scoreSaver();
@@ -366,7 +356,6 @@ async function showScoreTab(tabType) {
     }
 }
 
-// Initialization
 const initializeGame = () => {
     window.game = new Game();
     return window.game;
