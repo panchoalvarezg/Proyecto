@@ -1,106 +1,83 @@
 package com.atraparalagato.impl.model;
 
+import com.atraparalagato.base.model.Position;
 import com.atraparalagato.base.model.GameBoard;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
- * Implementación esqueleto de GameBoard para tableros hexagonales.
- * 
- * Los estudiantes deben completar los métodos marcados con TODO.
- * 
- * Conceptos a implementar:
- * - Modularización: Separación de lógica de tablero hexagonal
- * - OOP: Herencia y polimorfismo
- * - Programación Funcional: Uso de Predicate y streams
+ * Paradigma: Programación Orientada a Objetos y Funcional (para búsquedas/filtrado)
  */
-public class HexGameBoard extends GameBoard<HexPosition> {
-    
+public class HexGameBoard extends GameBoard {
+    private final int size;
+    private Set<HexPosition> blockedPositions;
+
     public HexGameBoard(int size) {
-        super(size);
+        this.size = size;
+        this.blockedPositions = new HashSet<>();
     }
-    
+
     @Override
-    protected Set<HexPosition> initializeBlockedPositions() {
-        // TODO: Los estudiantes deben decidir qué estructura de datos usar
-        // Opciones: HashSet, TreeSet, LinkedHashSet, etc.
-        // Considerar rendimiento vs orden vs duplicados
-        return new HashSet<>();
+    public boolean isPositionInBounds(Position position) {
+        // POO: validación de límites del tablero hexagonal
+        if (!(position instanceof HexPosition)) return false;
+        HexPosition pos = (HexPosition) position;
+        int q = pos.getQ(), r = pos.getR();
+        return q >= 0 && r >= 0 && q < size && r < size;
     }
-    
+
     @Override
-    protected boolean isPositionInBounds(HexPosition position) {
-        // TODO: Implementar validación de límites para tablero hexagonal
-        // Pista: Usar coordenadas axiales q, r, s
-        // Condición: |q| <= size && |r| <= size && |s| <= size
-        throw new UnsupportedOperationException("Los estudiantes deben implementar este método");
+    public boolean isValidMove(Position from, Position to) {
+        // POO: regla de movimiento + funcional (uso de isBlocked)
+        return isPositionInBounds(to) && !isBlocked(to) && getAdjacentPositions(from).contains(to);
     }
-    
+
     @Override
-    protected boolean isValidMove(HexPosition position) {
-        // TODO: Combinar validación de límites y estado actual
-        // Debe verificar:
-        // 1. Que la posición esté dentro de los límites
-        // 2. Que la posición no esté ya bloqueada
-        // 3. Cualquier regla adicional del juego
-        throw new UnsupportedOperationException("Los estudiantes deben implementar este método");
+    public void executeMove(Position from, Position to) {
+        // POO: ejecutar movimiento (p.ej. bloquear celda)
+        if (isValidMove(from, to)) {
+            blockedPositions.add((HexPosition) to);
+        }
     }
-    
+
     @Override
-    protected void executeMove(HexPosition position) {
-        // TODO: Actualizar el estado interno del tablero
-        // Agregar la posición a las posiciones bloqueadas
-        // Considerar si necesita validación adicional
-        throw new UnsupportedOperationException("Los estudiantes deben implementar este método");
+    public List<Position> getPositionsWhere(Predicate<Position> condition) {
+        // Funcional: filtra todas las posiciones válidas según el predicate
+        List<Position> result = new ArrayList<>();
+        for (int q = 0; q < size; q++) {
+            for (int r = 0; r < size; r++) {
+                HexPosition p = new HexPosition(q, r);
+                if (condition.test(p)) result.add(p);
+            }
+        }
+        return result;
     }
-    
+
     @Override
-    public List<HexPosition> getPositionsWhere(Predicate<HexPosition> condition) {
-        // TODO: Implementar usando programación funcional
-        // Generar todas las posiciones posibles del tablero
-        // Filtrar usando el Predicate
-        // Retornar como List
-        // 
-        // Ejemplo de uso de streams:
-        // return getAllPossiblePositions().stream()
-        //     .filter(condition)
-        //     .collect(Collectors.toList());
-        throw new UnsupportedOperationException("Los estudiantes deben implementar este método");
+    public List<Position> getAdjacentPositions(Position position) {
+        // POO: posiciones adyacentes en hexágono (sin salirse)
+        int[][] directions = {{1,0},{0,1},{-1,1},{-1,0},{0,-1},{1,-1}};
+        List<Position> adj = new ArrayList<>();
+        HexPosition p = (HexPosition) position;
+        for (int[] d : directions) {
+            HexPosition neighbor = new HexPosition(p.getQ() + d[0], p.getR() + d[1]);
+            if (isPositionInBounds(neighbor) && !isBlocked(neighbor)) adj.add(neighbor);
+        }
+        return adj;
     }
-    
+
     @Override
-    public List<HexPosition> getAdjacentPositions(HexPosition position) {
-        // TODO: Obtener las 6 posiciones adyacentes en un tablero hexagonal
-        // Direcciones hexagonales: (+1,0), (+1,-1), (0,-1), (-1,0), (-1,+1), (0,+1)
-        // Filtrar las que estén dentro de los límites del tablero
-        // 
-        // Pista: Crear array de direcciones y usar streams para mapear
-        throw new UnsupportedOperationException("Los estudiantes deben implementar este método");
+    public boolean isBlocked(Position position) {
+        return blockedPositions.contains(position);
     }
-    
-    @Override
-    public boolean isBlocked(HexPosition position) {
-        // TODO: Verificar si una posición está en el conjunto de bloqueadas
-        // Método simple de consulta
-        throw new UnsupportedOperationException("Los estudiantes deben implementar este método");
+
+    public int getSize() {
+        return size;
     }
-    
-    // Método auxiliar que los estudiantes pueden implementar
-    private List<HexPosition> getAllPossiblePositions() {
-        // TODO: Generar todas las posiciones válidas del tablero
-        // Usar doble loop para q y r, calcular s = -q - r
-        // Filtrar posiciones que estén dentro de los límites
-        throw new UnsupportedOperationException("Método auxiliar para implementar");
+
+    public Set<HexPosition> getBlockedPositions() {
+        return blockedPositions;
     }
-    
-    // Hook method override - ejemplo de extensibilidad
-    @Override
-    protected void onMoveExecuted(HexPosition position) {
-        // TODO: Los estudiantes pueden agregar lógica adicional aquí
-        // Ejemplos: logging, notificaciones, validaciones post-movimiento
-        super.onMoveExecuted(position);
-    }
-} 
+}
