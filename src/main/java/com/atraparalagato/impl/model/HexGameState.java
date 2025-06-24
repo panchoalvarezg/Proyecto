@@ -92,6 +92,5 @@ public class HexGameState extends GameState<HexPosition> {
         this.playerWon = (boolean) map.get("playerWon");
         this.score = (int) map.get("score");
         this.status = GameStatus.valueOf((String) map.get("status"));
-        // moveCount, gameId, createdAt pueden restaurarse si lo necesitas
     }
 }
