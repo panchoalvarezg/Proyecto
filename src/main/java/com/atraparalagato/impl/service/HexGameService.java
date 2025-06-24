@@ -53,7 +53,6 @@ public class HexGameService extends GameService<HexPosition> {
 	public HexGameState createGame(int boardSize, String difficulty, Map<String, Object> options) {
 		if (boardSize <= 2) boardSize = 3;
 
-		
 		String gameId = UUID.randomUUID().toString();
 		HexGameState gameState = new HexGameState(gameId, boardSize);
 		gameState.setDifficulty(difficulty);
@@ -70,6 +69,13 @@ public class HexGameService extends GameService<HexPosition> {
 		// 4. Inicializar estado del juego
 		// 5. Guardar en repositorio
 		// 6. Configurar callbacks y eventos
+	}
+
+	/**
+	 * Obtiene el estado de un juego por su ID.
+	 */
+	public Optional<HexGameState> getGameState(String gameId) {
+		return gameRepository.findById(gameId);
 	}
 	
 	/**
