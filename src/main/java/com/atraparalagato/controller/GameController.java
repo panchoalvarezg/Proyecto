@@ -63,7 +63,6 @@ public class GameController {
         response.put("status", gameState.getStatus() != null ? gameState.getStatus().toString() : "IN_PROGRESS");
         response.put("implementation", "impl");
 
-        // Cast para obtener información específica de HexGameState
         if (gameState instanceof HexGameState hexGameState) {
             response.put("boardSize", hexGameState.getBoardSize());
             response.put("blockedCells",
