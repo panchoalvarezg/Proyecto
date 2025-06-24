@@ -7,6 +7,7 @@ import com.atraparalagato.impl.model.HexPosition;
 import com.atraparalagato.impl.repository.H2GameRepository;
 import com.atraparalagato.impl.strategy.AStarCatMovement;
 import com.atraparalagato.base.model.GameState;
+import com.atraparalagato.base.model.GameBoard;
 
 import java.util.*;
 
@@ -122,6 +123,11 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
         } else {
             return new HexPosition(q, -q - (s > 0 ? size : -size));
         }
+    }
+
+    @Override
+    protected void initializeGame(GameState<HexPosition> gameState, GameBoard<HexPosition> board) {
+        // Si tienes lógica de inicialización, colócala aquí. Por defecto, nada.
     }
 
     // Otros métodos sin implementar...
