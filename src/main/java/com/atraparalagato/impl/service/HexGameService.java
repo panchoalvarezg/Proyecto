@@ -2,11 +2,11 @@ package com.atraparalagato.impl.service;
 
 import com.atraparalagato.base.model.GameState;
 import com.atraparalagato.base.model.GameState.GameStatus;
+import com.atraparalagato.impl.model.HexGameState;
+import com.atraparalagato.impl.model.HexGameBoard;
 import com.atraparalagato.impl.model.HexPosition;
 import com.atraparalagato.impl.repository.H2GameRepository;
 import com.atraparalagato.impl.strategy.AStarCatMovement;
-import com.atraparalagato.impl.model.HexGameState;
-import com.atraparalagato.impl.model.HexGameBoard;
 
 import java.util.*;
 
@@ -37,6 +37,13 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
         return gameRepository.findById(gameId).map(gs -> (HexGameState) gs);
     }
 
+    /**
+     * Ejecuta la jugada del jugador:
+     * - Bloquea la celda si es válida.
+     * - Mueve el gato automáticamente usando la estrategia AStar.
+     * - Actualiza el estado (gana/pierde/continúa).
+     * - Guarda el estado y lo retorna.
+     */
     public Optional<HexGameState> executePlayerMove(String gameId, HexPosition position, String playerId) {
         Optional<HexGameState> optional = getGameState(gameId);
         if (optional.isEmpty()) return Optional.empty();
@@ -49,29 +56,29 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
         HexGameBoard board = gameState.getGameBoard();
         HexPosition cat = gameState.getCatPosition();
 
-        // Validar movimiento
-        if (cat.equals(position) || board.getBlockedPositions().contains(position)) {
+        // Validar movimiento: no se puede bloquear donde está el gato o una celda bloqueada
+        if (cat.equals(position) || board.isBlocked(position)) {
             return Optional.of(gameState);
         }
 
-        // --- CORRECCIÓN: Método para bloquear la celda ---
-        // Si tu HexGameBoard tiene addBlockedPosition, usa ese. Si no, reemplaza por el correcto.
-        board.addBlockedPosition(position);
+        // Bloquear la celda
+        board.getBlockedPositions().add(position);
 
-        // --- CORRECCIÓN: Lógica de movimiento del gato usando AStarCatMovement (o tu estrategia) ---
-        // Si tu estrategia usa sólo la posición:
+        // Mover el gato automáticamente usando la estrategia AStarCatMovement
         AStarCatMovement movementStrategy = new AStarCatMovement(board);
         Optional<HexPosition> maybeNextPos = movementStrategy.getNextMove(cat);
 
         if (maybeNextPos.isEmpty()) {
-            // --- CORRECCIÓN: Usa método público para cambiar el estado ---
-            gameState.finishGame(GameStatus.PLAYER_WON); // O el método público equivalente
+            // El gato no puede moverse: el jugador ganó
+            // setStatus es protected, pero puedes usar performMove (que llama a updateGameStatus) y setCatPosition (que ya actualiza el estado)
+            // Aquí, como el gato no se puede mover, el estado ya se marca como ganado en updateGameStatus
+            // Lo forzamos actualizando el estado:
+            // gameState.setStatus(GameStatus.PLAYER_WON); // NO SE PUEDE: es protected
+            // Solución: usa setCatPosition en la misma posición para forzar updateGameStatus
+            gameState.setCatPosition(cat);
         } else {
             HexPosition nextCat = maybeNextPos.get();
-            gameState.setCatPosition(nextCat);
-            if (isBorder(nextCat, gameState.getBoardSize())) {
-                gameState.finishGame(GameStatus.PLAYER_LOST); // O el método público equivalente
-            }
+            gameState.setCatPosition(nextCat); // Esto actualiza el estado internamente
         }
 
         gameState.setMoveCount(gameState.getMoveCount() + 1);
@@ -87,5 +94,64 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
         return Math.abs(q) == boardSize || Math.abs(r) == boardSize || Math.abs(s) == boardSize;
     }
 
-    // Métodos sin implementar...
+    // Métodos no implementados lanzan excepción
+    public Optional<Map<String, Object>> getEnrichedGameState(String gameId) {
+        throw new UnsupportedOperationException("Los estudiantes deben implementar getEnrichedGameState");
+    }
+    public Optional<HexPosition> getIntelligentSuggestion(String gameId, String difficulty) {
+        throw new UnsupportedOperationException("Los estudiantes deben implementar getIntelligentSuggestion");
+    }
+    public Map<String, Object> analyzeGame(String gameId) {
+        throw new UnsupportedOperationException("Los estudiantes deben implementar analyzeGame");
+    }
+    public Map<String, Object> getPlayerStatistics(String playerId) {
+        throw new UnsupportedOperationException("Los estudiantes deben implementar getPlayerStatistics");
+    }
+    public void setGameDifficulty(String gameId, String difficulty) {
+        throw new UnsupportedOperationException("Los estudiantes deben implementar setGameDifficulty");
+    }
+    public boolean toggleGamePause(String gameId) {
+        throw new UnsupportedOperationException("Los estudiantes deben implementar toggleGamePause");
+    }
+    public Optional<HexGameState> undoLastMove(String gameId) {
+        throw new UnsupportedOperationException("Los estudiantes deben implementar undoLastMove");
+    }
+    public List<Map<String, Object>> getLeaderboard(int limit) {
+        throw new UnsupportedOperationException("Los estudiantes deben implementar getLeaderboard");
+    }
+    private boolean isValidAdvancedMove(HexGameState gameState, HexPosition position, String playerId) {
+        throw new UnsupportedOperationException("Método auxiliar para implementar");
+    }
+    private void executeCatMove(HexGameState gameState, String difficulty) {
+        throw new UnsupportedOperationException("Método auxiliar para implementar");
+    }
+    private int calculateAdvancedScore(HexGameState gameState, Map<String, Object> factors) {
+        throw new UnsupportedOperationException("Método auxiliar para implementar");
+    }
+    private void notifyGameEvent(String gameId, String eventType, Map<String, Object> eventData) {
+        throw new UnsupportedOperationException("Método auxiliar para implementar");
+    }
+    private com.atraparalagato.base.strategy.CatMovementStrategy createMovementStrategy(String difficulty, HexGameBoard board) {
+        throw new UnsupportedOperationException("Método auxiliar para implementar");
+    }
+    @Override
+    protected void initializeGame(GameState<HexPosition> gameState, com.atraparalagato.base.model.GameBoard<HexPosition> gameBoard) {
+        throw new UnsupportedOperationException("Los estudiantes deben implementar initializeGame");
+    }
+    @Override
+    public boolean isValidMove(String gameId, HexPosition position) {
+        throw new UnsupportedOperationException("Los estudiantes deben implementar isValidMove");
+    }
+    @Override
+    public Optional<HexPosition> getSuggestedMove(String gameId) {
+        throw new UnsupportedOperationException("Los estudiantes deben implementar getSuggestedMove");
+    }
+    @Override
+    protected HexPosition getTargetPosition(GameState<HexPosition> gameState) {
+        throw new UnsupportedOperationException("Los estudiantes deben implementar getTargetPosition");
+    }
+    @Override
+    public Object getGameStatistics(String gameId) {
+        throw new UnsupportedOperationException("Los estudiantes deben implementar getGameStatistics");
+    }
 }
