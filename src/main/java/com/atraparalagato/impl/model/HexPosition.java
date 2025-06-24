@@ -1,12 +1,10 @@
 package com.atraparalagato.impl.model;
 
+import com.atraparalagato.base.model.GamePosition;
 import java.io.Serializable;
 import java.util.Objects;
 
-/**
- * Posición en un tablero hexagonal usando coordenadas cúbicas.
- */
-public class HexPosition implements Serializable {
+public class HexPosition implements GamePosition, Serializable {
     private final int q;
     private final int r;
 
@@ -14,12 +12,9 @@ public class HexPosition implements Serializable {
         this.q = q;
         this.r = r;
     }
-
     public int getQ() { return q; }
     public int getR() { return r; }
     public int getS() { return -q - r; }
-    public int getX() { return q; }
-    public int getY() { return r; }
 
     public HexPosition add(HexPosition other) {
         return new HexPosition(this.q + other.q, this.r + other.r);
@@ -32,14 +27,9 @@ public class HexPosition implements Serializable {
         HexPosition other = (HexPosition) obj;
         return this.q == other.q && this.r == other.r;
     }
+    @Override
+    public int hashCode() { return Objects.hash(q, r); }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(q, r);
-    }
-
-    @Override
-    public String toString() {
-        return "HexPosition{" + "q=" + q + ", r=" + r + ", s=" + getS() + '}';
-    }
+    public String toString() { return "HexPosition{q=" + q + ", r=" + r + ", s=" + getS() + '}'; }
 }
