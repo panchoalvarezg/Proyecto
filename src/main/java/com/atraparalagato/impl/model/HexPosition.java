@@ -4,42 +4,25 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Representa una posición en un tablero hexagonal usando coordenadas cúbicas (q,r,s) donde q + r + s = 0.
- * Compatible con los ejemplos y estrategias que esperan estos métodos.
+ * Posición en un tablero hexagonal usando coordenadas cúbicas.
  */
 public class HexPosition implements Serializable {
-    private final int q; // columna
-    private final int r; // fila
-    // s se calcula como -(q + r)
+    private final int q;
+    private final int r;
 
     public HexPosition(int q, int r) {
         this.q = q;
         this.r = r;
     }
 
-    /** Retorna la coordenada q (columna axial) */
-    public int getQ() {
-        return q;
-    }
+    public int getQ() { return q; }
+    public int getR() { return r; }
+    public int getS() { return -q - r; }
+    public int getX() { return q; }
+    public int getY() { return r; }
 
-    /** Retorna la coordenada r (fila axial) */
-    public int getR() {
-        return r;
-    }
-
-    /** Calcula la coordenada s automáticamente (propiedad del sistema cúbico) */
-    public int getS() {
-        return -q - r;
-    }
-
-    /** Alias para q (para compatibilidad con código que usa getX) */
-    public int getX() {
-        return q;
-    }
-
-    /** Alias para r (para compatibilidad con código que usa getY) */
-    public int getY() {
-        return r;
+    public HexPosition add(HexPosition other) {
+        return new HexPosition(this.q + other.q, this.r + other.r);
     }
 
     @Override
@@ -52,15 +35,11 @@ public class HexPosition implements Serializable {
 
     @Override
     public int hashCode() {
-        return Objects.hash(q, r, getS());
+        return Objects.hash(q, r);
     }
 
     @Override
     public String toString() {
-        return "HexPosition{" +
-                "q=" + q +
-                ", r=" + r +
-                ", s=" + getS() +
-                '}';
+        return "HexPosition{" + "q=" + q + ", r=" + r + ", s=" + getS() + '}';
     }
 }
