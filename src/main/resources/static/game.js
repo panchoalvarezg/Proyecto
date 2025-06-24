@@ -61,7 +61,8 @@ class Game {
             const gameState = await apiCall();
             console.log("Respuesta backend:", gameState);
 
-            if (!gameState || !gameState.gameId || !gameState.cat || typeof gameState.movesCount === "undefined" || !gameState.status) {
+            // CAMBIO: Usar catPosition en vez de cat
+            if (!gameState || !gameState.gameId || !gameState.catPosition || typeof gameState.movesCount === "undefined" || !gameState.status) {
                 throw new Error('Respuesta inesperada del backend');
             }
 
@@ -86,7 +87,7 @@ class Game {
         if (!this.gameId) return;
         
         // No permitir bloquear la celda donde está el gato
-        if (this.gameState && this.gameState.cat && q === this.gameState.cat.q && r === this.gameState.cat.r) {
+        if (this.gameState && this.gameState.catPosition && q === this.gameState.catPosition.q && r === this.gameState.catPosition.r) {
             return;
         }
         
@@ -177,7 +178,9 @@ class Game {
         cell.setAttribute('data-r', position.r);
         cell.setAttribute('data-type', position.type);
 
-        const isCatPosition = gameState.cat && position.q === gameState.cat.q && position.r === gameState.cat.r;
+        // CAMBIO: Usar catPosition en vez de cat
+        const isCatPosition = gameState.catPosition && position.q === gameState.catPosition.q && position.r === gameState.catPosition.r;
+        // CAMBIO: Manejar blockedCells como array de objetos con q y r
         const isBlocked = Array.isArray(gameState.blockedCells) && gameState.blockedCells.some(pos => pos.q === position.q && pos.r === position.r);
 
         if (isCatPosition) {
@@ -361,4 +364,4 @@ const initializeGame = () => {
     return window.game;
 };
 
-window.addEventListener('load', initializeGame); 
+window.addEventListener('load', initializeGame);
