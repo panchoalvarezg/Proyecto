@@ -20,14 +20,16 @@ public class H2GameRepository {
     }
 
     private void initializeDatabase() {
-        try (Connection conn = DriverManager.getConnection(url, user, password);
-             Statement stmt = conn.createStatement()) {
-            stmt.execute("CREATE TABLE IF NOT EXISTS game_state (" +
-                    "id VARCHAR(100) PRIMARY KEY, " +
-                    "state BLOB)");
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+        executeInTransaction(conn -> {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("CREATE TABLE IF NOT EXISTS game_state (" +
+                        "id VARCHAR(100) PRIMARY KEY, " +
+                        "state BLOB)");
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+            return null;
+        });
     }
 
     public void save(String id, HexGameState state) {
@@ -37,7 +39,10 @@ public class H2GameRepository {
                 ps.setString(1, id);
                 ps.setBytes(2, serializeState(state));
                 ps.executeUpdate();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
             }
+            return null;
         });
     }
 
@@ -51,6 +56,8 @@ public class H2GameRepository {
                         return Optional.of(deserializeState(rs.getBytes(1)));
                     }
                 }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
             }
             return Optional.empty();
         });
@@ -64,6 +71,8 @@ public class H2GameRepository {
                 while (rs.next()) {
                     list.add(deserializeState(rs.getBytes(1)));
                 }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
             }
             return list;
         });
@@ -72,7 +81,11 @@ public class H2GameRepository {
     public List<HexGameState> findWhere(Predicate<HexGameState> filter) {
         List<HexGameState> all = findAll();
         List<HexGameState> filtered = new ArrayList<>();
-        for (HexGameState state : all) if (filter.test(state)) filtered.add(state);
+        for (HexGameState state : all) {
+            if (filter.test(state)) {
+                filtered.add(state);
+            }
+        }
         return filtered;
     }
 
