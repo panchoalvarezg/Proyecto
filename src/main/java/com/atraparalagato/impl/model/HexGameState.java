@@ -37,7 +37,7 @@ public class HexGameState extends GameState<HexPosition> {
     }
 
     @Override
-    protected void updateGameStatus() {
+    public void updateGameStatus() {
         // El jugador gana si el gato sale del tablero
         if (!catPosition.isWithinBounds(boardSize)) {
             status = GameStatus.PLAYER_WON;
