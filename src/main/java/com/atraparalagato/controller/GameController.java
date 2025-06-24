@@ -39,7 +39,8 @@ public class GameController {
             return ResponseEntity.notFound().build();
         }
         GameState<HexPosition> gameState = gameStateOpt.get();
-        return ResponseEntity.ok(gameStateToMap(gameState, gameState.getBoard() != null ? gameState.getBoard().getSize() : 11));
+        // El tamaño del tablero no está en GameState, así que asumimos 11 (o puedes guardarlo en otro lado)
+        return ResponseEntity.ok(gameStateToMap(gameState, 11));
     }
 
     @GetMapping("/state/{gameId}")
@@ -49,7 +50,7 @@ public class GameController {
             return ResponseEntity.notFound().build();
         }
         GameState<HexPosition> gameState = gameStateOpt.get();
-        return ResponseEntity.ok(gameStateToMap(gameState, gameState.getBoard() != null ? gameState.getBoard().getSize() : 11));
+        return ResponseEntity.ok(gameStateToMap(gameState, 11));
     }
 
     // Utilidad para construir la respuesta JSON
@@ -62,10 +63,10 @@ public class GameController {
         response.put("status", gameState.getStatus() != null ? gameState.getStatus().toString() : "IN_PROGRESS");
         response.put("boardSize", boardSize);
         response.put("implementation", "impl");
-        // Bloqueadas
-        if (gameState.getBoard() != null && gameState.getBoard().getBlockedPositions() != null) {
+        // Bloqueadas (usando GameState.getBlockedPositions())
+        if (gameState.getBlockedPositions() != null) {
             response.put("blockedCells",
-                gameState.getBoard().getBlockedPositions()
+                gameState.getBlockedPositions()
                     .stream()
                     .map(pos -> Map.of("q", pos.getQ(), "r", pos.getR()))
                     .collect(Collectors.toList())
