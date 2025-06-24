@@ -14,33 +14,36 @@ public class HexGameState extends GameState<HexPosition> {
     private final int boardSize;
     private final Set<HexPosition> blockedPositions = new HashSet<>();
 
-    public HexGameState(String gameId, HexPosition initialCatPosition, int boardSize) {
+    public HexGameState(String gameId, int boardSize) {
         super(gameId);
-        this.catPosition = initialCatPosition;
+        this.boardSize = boardSize;
+        // Centra el gato en el tablero
+        this.catPosition = new HexPosition(boardSize / 2, boardSize / 2);
         this.playerWon = false;
         this.score = 0;
-        this.boardSize = boardSize;
     }
 
     @Override
     protected boolean canExecuteMove(HexPosition position) {
-        return status == GameStatus.IN_PROGRESS && !catPosition.equals(position) && !blockedPositions.contains(position);
+        return status == GameStatus.IN_PROGRESS 
+            && !catPosition.equals(position) 
+            && !blockedPositions.contains(position);
     }
 
     @Override
     protected boolean performMove(HexPosition position) {
-        if (!canExecuteMove(position)) return false;
-        blockCell(position);
-        return true;
+        // Este método puede usarse para lógica adicional de movimiento si lo deseas
+        return canExecuteMove(position);
     }
 
     @Override
     protected void updateGameStatus() {
-        // Ejemplo: lógica básica, puedes mejorarla
+        // El jugador gana si el gato sale del tablero
         if (!catPosition.isWithinBounds(boardSize)) {
             status = GameStatus.PLAYER_WON;
             playerWon = true;
-        } else if (false) { // Aquí tu condición de derrota
+        } else if (getFreeNeighbors(catPosition).isEmpty()) {
+            // Si el gato no puede moverse, el jugador pierde
             status = GameStatus.PLAYER_LOST;
             playerWon = false;
         } else {
@@ -85,6 +88,18 @@ public class HexGameState extends GameState<HexPosition> {
         return boardSize;
     }
 
+    public java.util.List<HexPosition> getFreeNeighbors(HexPosition cat) {
+        int[][] dirs = {{1,0},{0,1},{-1,1},{-1,0},{0,-1},{1,-1}};
+        java.util.List<HexPosition> result = new java.util.ArrayList<>();
+        for (int[] d : dirs) {
+            HexPosition neighbor = new HexPosition(cat.getQ() + d[0], cat.getR() + d[1]);
+            if (neighbor.isWithinBounds(boardSize) && !blockedPositions.contains(neighbor)) {
+                result.add(neighbor);
+            }
+        }
+        return result;
+    }
+
     @Override
     public Object getSerializableState() {
         Map<String, Object> map = new HashMap<>();
@@ -115,7 +130,6 @@ public class HexGameState extends GameState<HexPosition> {
         this.playerWon = (boolean) map.get("playerWon");
         this.score = (int) map.get("score");
         this.status = GameStatus.valueOf((String) map.get("status"));
-        // Restaura celdas bloqueadas si es necesario
         Object blocked = map.get("blockedCells");
         if (blocked instanceof Iterable<?> iterable) {
             for (Object o : iterable) {
