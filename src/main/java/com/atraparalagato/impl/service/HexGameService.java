@@ -6,15 +6,15 @@ import com.atraparalagato.impl.model.HexPosition;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class HexGameService {
 
-    // Mapa de juegos activos por su gameId
-    private final Map<String, GameState<HexPosition>> games = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, GameState<HexPosition>> games = new ConcurrentHashMap<>();
 
     /**
-     * Crea un nuevo juego y lo registra en el mapa.
+     * Inicia un nuevo juego y lo registra en el mapa.
      * @param boardSize Tamaño del tablero.
      * @return El estado inicial del juego.
      */
@@ -26,7 +26,7 @@ public class HexGameService {
     }
 
     /**
-     * Ejecuta el movimiento del jugador en el juego correspondiente.
+     * Ejecuta el movimiento del jugador (bloqueo de celda) y mueve el gato en el juego correspondiente.
      * @param gameId ID del juego
      * @param position Posición a bloquear por el jugador
      * @return Estado actualizado del juego, si existe el juego.
@@ -37,18 +37,19 @@ public class HexGameService {
             return Optional.empty();
         }
         if (gameState instanceof HexGameState hexGameState) {
-            // 1. Bloquea la celda
+            // 1. Bloquea la celda seleccionada por el usuario
             hexGameState.blockCell(position);
 
-            // 2. Mueve el gato a un vecino libre (puedes mejorar esto con BFS)
+            // 2. Mueve el gato a un vecino libre (simple: primer vecino libre)
             HexPosition cat = hexGameState.getCatPosition();
             List<HexPosition> neighbors = hexGameState.getFreeNeighbors(cat);
 
             if (!neighbors.isEmpty()) {
-                // Mueve el gato a la primera celda libre (puedes elegir el camino más corto si lo deseas)
+                // Mueve el gato a la primera celda libre adyacente
                 HexPosition nextCat = neighbors.get(0);
                 hexGameState.setCatPosition(nextCat);
             }
+
             // 3. Actualiza el estado del juego
             hexGameState.updateGameStatus();
         }
