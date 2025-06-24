@@ -5,19 +5,13 @@ import com.atraparalagato.impl.model.HexGameState;
 import com.atraparalagato.impl.model.HexPosition;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 
-/**
- * Servicio para gestionar los juegos de Hex.
- */
 @Service
 public class HexGameService {
 
     // Mapa de juegos activos por su gameId
-    private final Map<String, GameState<HexPosition>> games = new ConcurrentHashMap<>();
+    private final Map<String, GameState<HexPosition>> games = new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
      * Crea un nuevo juego y lo registra en el mapa.
@@ -25,11 +19,8 @@ public class HexGameService {
      * @return El estado inicial del juego.
      */
     public GameState<HexPosition> startNewGame(int boardSize) {
-        // Posición inicial del gato: centro del tablero
-        HexPosition initialCatPosition = new HexPosition(boardSize / 2, boardSize / 2);
         String gameId = UUID.randomUUID().toString();
-        // CORRECCIÓN: Se pasa también boardSize al constructor
-        GameState<HexPosition> gameState = new HexGameState(gameId, initialCatPosition, boardSize);
+        GameState<HexPosition> gameState = new HexGameState(gameId, boardSize);
         games.put(gameId, gameState);
         return gameState;
     }
@@ -37,7 +28,7 @@ public class HexGameService {
     /**
      * Ejecuta el movimiento del jugador en el juego correspondiente.
      * @param gameId ID del juego
-     * @param position Posición a bloquear o mover (según la lógica)
+     * @param position Posición a bloquear por el jugador
      * @return Estado actualizado del juego, si existe el juego.
      */
     public Optional<GameState<HexPosition>> executePlayerMove(String gameId, HexPosition position) {
@@ -45,11 +36,22 @@ public class HexGameService {
         if (gameState == null) {
             return Optional.empty();
         }
-        // Aquí deberías actualizar el estado según tus reglas (bloquear una celda, mover el gato, etc.)
         if (gameState instanceof HexGameState hexGameState) {
+            // 1. Bloquea la celda
             hexGameState.blockCell(position);
+
+            // 2. Mueve el gato a un vecino libre (puedes mejorar esto con BFS)
+            HexPosition cat = hexGameState.getCatPosition();
+            List<HexPosition> neighbors = hexGameState.getFreeNeighbors(cat);
+
+            if (!neighbors.isEmpty()) {
+                // Mueve el gato a la primera celda libre (puedes elegir el camino más corto si lo deseas)
+                HexPosition nextCat = neighbors.get(0);
+                hexGameState.setCatPosition(nextCat);
+            }
+            // 3. Actualiza el estado del juego
+            hexGameState.updateGameStatus();
         }
-        gameState.executeMove(position);
         return Optional.of(gameState);
     }
 
@@ -61,6 +63,4 @@ public class HexGameService {
     public Optional<GameState<HexPosition>> getGameState(String gameId) {
         return Optional.ofNullable(games.get(gameId));
     }
-
-    // Puedes agregar más métodos si lo necesitas (por ejemplo, eliminar juegos terminados).
 }
