@@ -1,72 +1,48 @@
 package com.atraparalagato.impl.model;
 
-import com.atraparalagato.base.model.Position;
-
+import java.io.Serializable;
 import java.util.Objects;
 
-public class HexPosition extends Position {
-    private final int q;
-    private final int r;
+/**
+ * Representa una posición en un tablero hexagonal.
+ * Basado en el ejemplo de ExampleGameBoard/ExampleGameState,
+ * pero adaptado para el sistema de coordenadas hexagonales.
+ */
+public class HexPosition implements Serializable {
+    private final int x;
+    private final int y;
 
-    public HexPosition(int q, int r) {
-        this.q = q;
-        this.r = r;
+    public HexPosition(int x, int y) {
+        this.x = x;
+        this.y = y;
     }
 
-    public int getQ() { return q; }
-    public int getR() { return r; }
-    // S = -(q + r) para coordenadas hexagonales cúbicas
-    public int getS() { return -q - r; }
-
-    @Override
-    public double distanceTo(Position other) {
-        if (!(other instanceof HexPosition)) throw new IllegalArgumentException();
-        HexPosition o = (HexPosition) other;
-        // Distancia hexagonal: máximo de las diferencias absolutas
-        return (Math.abs(q - o.q) + Math.abs(r - o.r) + Math.abs(getS() - o.getS())) / 2.0;
+    public int getX() {
+        return x;
     }
 
-    @Override
-    public Position add(Position other) {
-        HexPosition o = (HexPosition) other;
-        return new HexPosition(q + o.q, r + o.r);
+    public int getY() {
+        return y;
     }
 
-    @Override
-    public Position subtract(Position other) {
-        HexPosition o = (HexPosition) other;
-        return new HexPosition(q - o.q, r - o.r);
-    }
-
-    @Override
-    public boolean isAdjacentTo(Position other) {
-        HexPosition o = (HexPosition) other;
-        int dq = Math.abs(q - o.q);
-        int dr = Math.abs(r - o.r);
-        int ds = Math.abs(getS() - o.getS());
-        return (dq + dr + ds) == 2;
-    }
-
-    @Override
-    public boolean isWithinBounds(int maxSize) {
-        return q >= 0 && r >= 0 && -q - r >= 0 && q < maxSize && r < maxSize && -q - r < maxSize;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(q, r);
-    }
-
+    /**
+     * Dos posiciones hexagonales son iguales si sus coordenadas x e y son iguales.
+     */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
         if (!(obj instanceof HexPosition)) return false;
-        HexPosition o = (HexPosition) obj;
-        return q == o.q && r == o.r;
+        HexPosition other = (HexPosition) obj;
+        return this.x == other.x && this.y == other.y;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(x, y);
     }
 
     @Override
     public String toString() {
-        return "(" + q + "," + r + ")";
+        return "HexPosition{" + "x=" + x + ", y=" + y + '}';
     }
 }
