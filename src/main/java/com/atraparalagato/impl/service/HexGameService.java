@@ -6,6 +6,7 @@ import com.atraparalagato.impl.model.HexGameBoard;
 import com.atraparalagato.impl.model.HexPosition;
 import com.atraparalagato.impl.repository.H2GameRepository;
 import com.atraparalagato.impl.strategy.AStarCatMovement;
+import com.atraparalagato.base.model.GameState;
 
 import java.util.*;
 
@@ -78,10 +79,8 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
         HexGameBoard board = gameState.getGameBoard();
         HexPosition cat = gameState.getCatPosition();
 
-        // No puedes bloquear donde está el gato, ni algo ya bloqueado ni fuera de los bordes
         if (cat.equals(position)) return false;
         if (board.isBlocked(position)) return false;
-        // Validación manual de límites (ya que isPositionInBounds es protected)
         int q = position.getQ();
         int r = position.getR();
         int s = -q - r;
@@ -98,6 +97,31 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
     @Override
     public Object getGameStatistics(String gameId) {
         throw new UnsupportedOperationException("No implementado aún");
+    }
+
+    @Override
+    protected HexPosition getTargetPosition(GameState<HexPosition> gameState) {
+        HexGameState hexGameState = (HexGameState) gameState;
+        HexPosition cat = hexGameState.getCatPosition();
+        int size = hexGameState.getBoardSize();
+
+        if (cat.isAtBorder(size)) return cat;
+
+        int q = cat.getQ();
+        int r = cat.getR();
+        int s = -q - r;
+
+        int qDist = size - Math.abs(q);
+        int rDist = size - Math.abs(r);
+        int sDist = size - Math.abs(s);
+
+        if (qDist <= rDist && qDist <= sDist) {
+            return new HexPosition(q > 0 ? size : -size, r);
+        } else if (rDist <= qDist && rDist <= sDist) {
+            return new HexPosition(q, r > 0 ? size : -size);
+        } else {
+            return new HexPosition(q, -q - (s > 0 ? size : -size));
+        }
     }
 
     // Otros métodos sin implementar...
