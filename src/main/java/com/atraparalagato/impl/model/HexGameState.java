@@ -6,6 +6,7 @@ import com.atraparalagato.impl.strategy.AStarCatMovement;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.json.JSONArray;
@@ -195,6 +196,13 @@ public class HexGameState extends GameState<HexPosition> {
 	public HexGameBoard getGameBoard() {
 		return gameBoard;
 	}
+
+	/**
+	 * Devuelve el conjunto de posiciones bloqueadas del tablero.
+	 */
+	public Set<HexPosition> getBlockedPositions() {
+		return gameBoard.getBlockedPositions();
+	}
 	
 	// Actualiza la cantidad de movimientos ya realizados
 	public void setMoveCount(int newMoveCount) {
@@ -218,4 +226,4 @@ public class HexGameState extends GameState<HexPosition> {
 	
 	// TODO: Los estudiantes pueden agregar más métodos según necesiten [MAYBE AGREGAR PARA DIFFICULTY Y TIMEELAPSED]
 	// Ejemplos: getDifficulty(), getTimeElapsed(), getPowerUps(), etc.
-} 
+}
