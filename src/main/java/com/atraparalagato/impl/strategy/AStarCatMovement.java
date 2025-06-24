@@ -1,73 +1,82 @@
 package com.atraparalagato.impl.strategy;
 
-import com.atraparalagato.impl.model.*;
+import com.atraparalagato.base.strategy.CatMovementStrategy;
+import com.atraparalagato.impl.model.HexGameBoard;
+import com.atraparalagato.impl.model.HexPosition;
+
 import java.util.*;
-import java.util.function.*;
+import java.util.function.Predicate;
 
-public class AStarCatMovement {
-    public List<HexPosition> getPossibleMoves(HexGameBoard board, HexPosition from) {
-        return board.getAdjacentPositions(from);
+/**
+ * Estrategia de movimiento del gato usando algoritmo A*.
+ */
+public class AStarCatMovement implements CatMovementStrategy<HexPosition> {
+
+    @Override
+    public HexPosition selectMove(HexGameBoard board, HexPosition start, Predicate<HexPosition> isGoal) {
+        List<HexPosition> path = getAStarPath(board, start, isGoal);
+        if (path.size() > 1) {
+            return path.get(1); // El siguiente paso óptimo
+        }
+        return start; // No hay movimiento posible
     }
 
-    public HexPosition selectBestMove(HexGameBoard board, HexPosition from, Predicate<HexPosition> goal) {
-        List<HexPosition> path = getFullPath(board, from, goal);
-        if (path.size() > 1) return path.get(1);
-        return from;
-    }
-
-    public ToIntFunction<HexPosition> getHeuristicFunction(HexPosition goal) {
-        return pos -> Math.abs(goal.getX() - pos.getX()) + Math.abs(goal.getY() - pos.getY());
-    }
-
-    public Predicate<HexPosition> getGoalPredicate(HexGameBoard board) {
-        return pos -> {
-            int x = pos.getX(), y = pos.getY();
-            return x == 0 || y == 0 || x == board.getWidth()-1 || y == board.getHeight()-1;
-        };
-    }
-
-    public boolean hasPathToGoal(HexGameBoard board, HexPosition from, Predicate<HexPosition> goalPredicate) {
-        return !getFullPath(board, from, goalPredicate).isEmpty();
-    }
-
-    public List<HexPosition> getFullPath(HexGameBoard board, HexPosition from, Predicate<HexPosition> goalPredicate) {
+    private List<HexPosition> getAStarPath(HexGameBoard board, HexPosition start, Predicate<HexPosition> isGoal) {
         PriorityQueue<Node> open = new PriorityQueue<>(Comparator.comparingInt(n -> n.f));
         Map<HexPosition, Integer> gScore = new HashMap<>();
         Map<HexPosition, HexPosition> cameFrom = new HashMap<>();
         Set<HexPosition> closed = new HashSet<>();
-        open.add(new Node(from, 0, 0));
-        gScore.put(from, 0);
+        open.add(new Node(start, 0, heuristic(start)));
+        gScore.put(start, 0);
+
         while (!open.isEmpty()) {
             Node curr = open.poll();
-            if (goalPredicate.test(curr.pos)) {
-                // Reconstruir camino
-                List<HexPosition> path = new ArrayList<>();
-                HexPosition step = curr.pos;
-                while (step != null) {
-                    path.add(step);
-                    step = cameFrom.get(step);
-                }
-                Collections.reverse(path);
-                return path;
+            if (isGoal.test(curr.position)) {
+                return reconstructPath(cameFrom, curr.position);
             }
-            closed.add(curr.pos);
-            for (HexPosition neighbor : board.getAdjacentPositions(curr.pos)) {
+            closed.add(curr.position);
+
+            for (HexPosition neighbor : board.getAdjacentPositions(curr.position)) {
                 if (closed.contains(neighbor)) continue;
-                int tentative = gScore.get(curr.pos) + 1;
-                if (tentative < gScore.getOrDefault(neighbor, Integer.MAX_VALUE)) {
-                    cameFrom.put(neighbor, curr.pos);
-                    gScore.put(neighbor, tentative);
-                    int h = getHeuristicFunction(curr.pos).applyAsInt(neighbor);
-                    open.add(new Node(neighbor, tentative, tentative + h));
+                int tentativeG = gScore.get(curr.position) + 1;
+                if (tentativeG < gScore.getOrDefault(neighbor, Integer.MAX_VALUE)) {
+                    cameFrom.put(neighbor, curr.position);
+                    gScore.put(neighbor, tentativeG);
+                    int f = tentativeG + heuristic(neighbor);
+                    open.add(new Node(neighbor, tentativeG, f));
                 }
             }
         }
-        return Collections.emptyList();
+        return Collections.singletonList(start);
     }
 
-    private static class Node {
-        HexPosition pos;
+    private int heuristic(HexPosition pos) {
+        // Heurística: distancia mínima a un borde
+        int size = 9; // Ajusta según el tamaño real del tablero si lo necesitas
+        int distQ = Math.min(Math.abs(pos.getQ() - size), Math.abs(pos.getQ() + size));
+        int distR = Math.min(Math.abs(pos.getR() - size), Math.abs(pos.getR() + size));
+        int distS = Math.min(Math.abs(pos.getS() - size), Math.abs(pos.getS() + size));
+        return Math.min(distQ, Math.min(distR, distS));
+    }
+
+    private List<HexPosition> reconstructPath(Map<HexPosition, HexPosition> cameFrom, HexPosition end) {
+        List<HexPosition> path = new ArrayList<>();
+        HexPosition current = end;
+        while (current != null) {
+            path.add(current);
+            current = cameFrom.get(current);
+        }
+        Collections.reverse(path);
+        return path;
+    }
+
+    static class Node {
+        HexPosition position;
         int g, f;
-        Node(HexPosition pos, int g, int f) { this.pos = pos; this.g = g; this.f = f; }
+        Node(HexPosition position, int g, int f) {
+            this.position = position;
+            this.g = g;
+            this.f = f;
+        }
     }
 }
