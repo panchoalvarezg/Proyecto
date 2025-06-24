@@ -40,7 +40,13 @@ public class HexGameService {
             // 1. Bloquea la celda seleccionada por el usuario
             hexGameState.blockCell(position);
 
-            // 2. Mueve el gato a un vecino libre (simple: primer vecino libre)
+            // 2. Verifica si el jugador ha ganado (el gato está atrapado)
+            hexGameState.updateGameStatus();
+            if (hexGameState.isGameFinished()) {
+                return Optional.of(gameState);
+            }
+
+            // 3. Mueve el gato a un vecino libre (simple: primer vecino libre)
             HexPosition cat = hexGameState.getCatPosition();
             List<HexPosition> neighbors = hexGameState.getFreeNeighbors(cat);
 
@@ -50,7 +56,7 @@ public class HexGameService {
                 hexGameState.setCatPosition(nextCat);
             }
 
-            // 3. Actualiza el estado del juego
+            // 4. Actualiza el estado del juego después de mover el gato
             hexGameState.updateGameStatus();
         }
         return Optional.of(gameState);
