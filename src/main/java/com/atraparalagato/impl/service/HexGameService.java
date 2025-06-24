@@ -82,6 +82,21 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
     }
 
     @Override
+    public boolean isValidMove(String gameId, HexPosition position) {
+        Optional<HexGameState> optional = getGameState(gameId);
+        if (optional.isEmpty()) return false;
+        HexGameState gameState = optional.get();
+        HexGameBoard board = gameState.getGameBoard();
+        HexPosition cat = gameState.getCatPosition();
+
+        // No puedes bloquear donde está el gato, ni fuera de los bordes, ni algo ya bloqueado
+        if (cat.equals(position)) return false;
+        if (!board.isPositionInBounds(position)) return false;
+        if (board.isBlocked(position)) return false;
+        return true;
+    }
+
+    @Override
     public Optional<HexPosition> getSuggestedMove(String gameId) {
         throw new UnsupportedOperationException("No implementado aún");
     }
