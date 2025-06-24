@@ -1,51 +1,57 @@
 package com.atraparalagato.impl.strategy;
 
-import com.atraparalagato.impl.model.*;
+import com.atraparalagato.base.strategy.CatMovementStrategy;
+import com.atraparalagato.impl.model.HexGameBoard;
+import com.atraparalagato.impl.model.HexPosition;
+
 import java.util.*;
-import java.util.function.*;
+import java.util.function.Predicate;
 
-public class BFSCatMovement {
-    public List<HexPosition> getPossibleMoves(HexGameBoard board, HexPosition from) {
-        return board.getAdjacentPositions(from);
+/**
+ * Estrategia de movimiento del gato usando BFS (camino más corto garantizado).
+ */
+public class BFSCatMovement implements CatMovementStrategy<HexPosition> {
+
+    @Override
+    public HexPosition selectMove(HexGameBoard board, HexPosition start, Predicate<HexPosition> isGoal) {
+        List<HexPosition> path = getBFSPath(board, start, isGoal);
+        if (path.size() > 1) {
+            return path.get(1); // Siguiente paso en el camino más corto
+        }
+        return start; // No hay movimiento posible
     }
 
-    public HexPosition selectBestMove(HexGameBoard board, HexPosition from, Predicate<HexPosition> goal) {
-        List<HexPosition> path = getFullPath(board, from, goal);
-        if (path.size() > 1) return path.get(1);
-        return from;
-    }
-
-    public boolean hasPathToGoal(HexGameBoard board, HexPosition from, Predicate<HexPosition> goalPredicate) {
-        return !getFullPath(board, from, goalPredicate).isEmpty();
-    }
-
-    public List<HexPosition> getFullPath(HexGameBoard board, HexPosition from, Predicate<HexPosition> goalPredicate) {
+    private List<HexPosition> getBFSPath(HexGameBoard board, HexPosition start, Predicate<HexPosition> isGoal) {
         Queue<HexPosition> queue = new LinkedList<>();
         Map<HexPosition, HexPosition> cameFrom = new HashMap<>();
         Set<HexPosition> visited = new HashSet<>();
-        queue.add(from);
-        visited.add(from);
+        queue.add(start);
+        visited.add(start);
+
         while (!queue.isEmpty()) {
-            HexPosition curr = queue.poll();
-            if (goalPredicate.test(curr)) {
-                // reconstruir camino
-                List<HexPosition> path = new ArrayList<>();
-                HexPosition step = curr;
-                while (step != null) {
-                    path.add(step);
-                    step = cameFrom.get(step);
-                }
-                Collections.reverse(path);
-                return path;
+            HexPosition current = queue.poll();
+            if (isGoal.test(current)) {
+                return reconstructPath(cameFrom, current);
             }
-            for (HexPosition neighbor : board.getAdjacentPositions(curr)) {
+            for (HexPosition neighbor : board.getAdjacentPositions(current)) {
                 if (!visited.contains(neighbor)) {
                     visited.add(neighbor);
-                    cameFrom.put(neighbor, curr);
+                    cameFrom.put(neighbor, current);
                     queue.add(neighbor);
                 }
             }
         }
-        return Collections.emptyList();
+        return Collections.singletonList(start);
+    }
+
+    private List<HexPosition> reconstructPath(Map<HexPosition, HexPosition> cameFrom, HexPosition end) {
+        List<HexPosition> path = new ArrayList<>();
+        HexPosition current = end;
+        while (current != null) {
+            path.add(current);
+            current = cameFrom.get(current);
+        }
+        Collections.reverse(path);
+        return path;
     }
 }
