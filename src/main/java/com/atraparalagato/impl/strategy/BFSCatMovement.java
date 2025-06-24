@@ -1,27 +1,14 @@
 package com.atraparalagato.impl.strategy;
 
 import com.atraparalagato.base.strategy.CatMovementStrategy;
-import com.atraparalagato.impl.model.HexGameBoard;
 import com.atraparalagato.impl.model.HexPosition;
+import com.atraparalagato.impl.model.HexGameBoard;
 
 import java.util.*;
-import java.util.function.Predicate;
 
-/**
- * Estrategia de movimiento del gato usando BFS (camino más corto garantizado).
- */
 public class BFSCatMovement implements CatMovementStrategy<HexPosition> {
-
     @Override
-    public HexPosition selectMove(HexGameBoard board, HexPosition start, Predicate<HexPosition> isGoal) {
-        List<HexPosition> path = getBFSPath(board, start, isGoal);
-        if (path.size() > 1) {
-            return path.get(1); // Siguiente paso en el camino más corto
-        }
-        return start; // No hay movimiento posible
-    }
-
-    private List<HexPosition> getBFSPath(HexGameBoard board, HexPosition start, Predicate<HexPosition> isGoal) {
+    public HexPosition selectMove(HexGameBoard board, HexPosition start) {
         Queue<HexPosition> queue = new LinkedList<>();
         Map<HexPosition, HexPosition> cameFrom = new HashMap<>();
         Set<HexPosition> visited = new HashSet<>();
@@ -30,8 +17,8 @@ public class BFSCatMovement implements CatMovementStrategy<HexPosition> {
 
         while (!queue.isEmpty()) {
             HexPosition current = queue.poll();
-            if (isGoal.test(current)) {
-                return reconstructPath(cameFrom, current);
+            if (board.isAtBorder(current)) {
+                return reconstructFirstStep(cameFrom, start, current);
             }
             for (HexPosition neighbor : board.getAdjacentPositions(current)) {
                 if (!visited.contains(neighbor)) {
@@ -41,17 +28,16 @@ public class BFSCatMovement implements CatMovementStrategy<HexPosition> {
                 }
             }
         }
-        return Collections.singletonList(start);
+        return start;
     }
 
-    private List<HexPosition> reconstructPath(Map<HexPosition, HexPosition> cameFrom, HexPosition end) {
-        List<HexPosition> path = new ArrayList<>();
+    private HexPosition reconstructFirstStep(Map<HexPosition, HexPosition> cameFrom, HexPosition start, HexPosition end) {
         HexPosition current = end;
-        while (current != null) {
-            path.add(current);
+        HexPosition prev = null;
+        while (current != null && !current.equals(start)) {
+            prev = current;
             current = cameFrom.get(current);
         }
-        Collections.reverse(path);
-        return path;
+        return prev != null ? prev : start;
     }
 }
