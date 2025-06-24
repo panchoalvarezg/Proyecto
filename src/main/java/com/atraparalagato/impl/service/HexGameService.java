@@ -1,110 +1,101 @@
 package com.atraparalagato.impl.service;
 
-import com.atraparalagato.base.service.GameService;
-import com.atraparalagato.base.model.GameState;
-import com.atraparalagato.base.model.GameBoard;
-import com.atraparalagato.base.strategy.CatMovementStrategy;
-import com.atraparalagato.impl.model.HexPosition;
-import com.atraparalagato.impl.repository.H2GameRepository;
-import com.atraparalagato.impl.strategy.AStarCatMovement;
-import com.atraparalagato.impl.model.HexGameState;
 import com.atraparalagato.impl.model.HexGameBoard;
+import com.atraparalagato.impl.model.HexGameState;
+import com.atraparalagato.impl.model.HexPosition;
+import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Map;
+import java.util.Arrays;
 import java.util.Optional;
-import java.util.UUID;
 
-public class HexGameService extends GameService<HexPosition> {
+@Service
+public class HexGameService {
 
-    public HexGameService() {
-        super(
-            new HexGameBoard(5),
-            new AStarCatMovement(new HexGameBoard(5)),
-            new H2GameRepository(),
-            () -> UUID.randomUUID().toString(),
-            (size) -> new HexGameBoard(size),
-            (gameId) -> new HexGameState(gameId, 5)
-        );
+    private final HexGameRepository repository;
+
+    public HexGameService(HexGameRepository repository) {
+        this.repository = repository;
     }
 
-    public HexGameState createGame(int boardSize, String difficulty, Map<String, Object> options) {
-        if (boardSize <= 2) boardSize = 3;
-        String gameId = UUID.randomUUID().toString();
-        HexGameState gameState = new HexGameState(gameId, boardSize);
-        gameState.setDifficulty(difficulty);
-        gameRepository.save(gameState);
-        return gameState;
+    // ... otros métodos como createGame, etc ...
+
+    public HexGameState executePlayerMove(String gameId, int q, int r) {
+        // 1. Buscar el juego por ID
+        Optional<HexGameState> optState = repository.findById(gameId);
+        if (optState.isEmpty()) {
+            throw new IllegalArgumentException("Juego no encontrado");
+        }
+        HexGameState state = optState.get();
+
+        // 2. Verificar que el juego esté en progreso
+        if (!"IN_PROGRESS".equals(state.getStatus())) {
+            throw new IllegalStateException("El juego ya está finalizado");
+        }
+
+        HexGameBoard board = state.getGameBoard();
+        HexPosition cat = state.getCatPosition();
+
+        // 3. Validar que no se bloquee la posición del gato ni una celda ya bloqueada
+        if ((cat.getQ() == q && cat.getR() == r) || board.isBlocked(q, r)) {
+            throw new IllegalArgumentException("Celda no válida para bloquear");
+        }
+
+        // 4. Bloquear la celda
+        board.blockCell(q, r);
+
+        // 5. Mover el gato automáticamente
+        HexPosition nextCatPos = findNextCatPosition(cat, board, state.getBoardSize());
+        if (nextCatPos == null) {
+            // El gato no puede moverse: gana el jugador
+            state.setStatus("PLAYER_WON");
+        } else {
+            state.setCatPosition(nextCatPos);
+            // Si el gato llega al borde, pierdes
+            if (isBorder(nextCatPos, state.getBoardSize())) {
+                state.setStatus("PLAYER_LOST");
+            }
+        }
+
+        // 6. Actualizar el contador de movimientos
+        state.setMoveCount(state.getMoveCount() + 1);
+
+        // 7. Guardar el estado actualizado
+        repository.save(state);
+
+        // 8. Retornar el nuevo estado
+        return state;
     }
 
-    @SuppressWarnings("unchecked")
-    public Optional<HexGameState> getGameState(String gameId) {
-        // Cast seguro, el repositorio solo guarda HexGameState
-        return gameRepository.findById(gameId)
-            .map(gs -> (HexGameState) gs);
+    // Chequea si la posición está en el borde del tablero
+    private boolean isBorder(HexPosition pos, int boardSize) {
+        int q = pos.getQ();
+        int r = pos.getR();
+        int s = -q - r;
+        return Math.abs(q) == boardSize || Math.abs(r) == boardSize || Math.abs(s) == boardSize;
     }
 
-    // Métodos sin implementar (lanzan excepciones)
-    public Optional<HexGameState> executePlayerMove(String gameId, HexPosition position, String playerId) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar executePlayerMove");
+    // Devuelve la siguiente posición del gato, o null si no puede moverse
+    private HexPosition findNextCatPosition(HexPosition cat, HexGameBoard board, int boardSize) {
+        // Direcciones hexagonales (6)
+        int[][] dirs = {
+            {1, 0}, {1, -1}, {0, -1},
+            {-1, 0}, {-1, 1}, {0, 1}
+        };
+        for (int[] dir : dirs) {
+            int nq = cat.getQ() + dir[0];
+            int nr = cat.getR() + dir[1];
+            // No salir del tablero y no ir a una celda bloqueada
+            if (isInBoard(nq, nr, boardSize) && !board.isBlocked(nq, nr)) {
+                return new HexPosition(nq, nr);
+            }
+        }
+        // Si no hay movimientos posibles
+        return null;
     }
-    public Optional<Map<String, Object>> getEnrichedGameState(String gameId) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar getEnrichedGameState");
-    }
-    public Optional<HexPosition> getIntelligentSuggestion(String gameId, String difficulty) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar getIntelligentSuggestion");
-    }
-    public Map<String, Object> analyzeGame(String gameId) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar analyzeGame");
-    }
-    public Map<String, Object> getPlayerStatistics(String playerId) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar getPlayerStatistics");
-    }
-    public void setGameDifficulty(String gameId, String difficulty) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar setGameDifficulty");
-    }
-    public boolean toggleGamePause(String gameId) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar toggleGamePause");
-    }
-    public Optional<HexGameState> undoLastMove(String gameId) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar undoLastMove");
-    }
-    public List<Map<String, Object>> getLeaderboard(int limit) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar getLeaderboard");
-    }
-    private boolean isValidAdvancedMove(HexGameState gameState, HexPosition position, String playerId) {
-        throw new UnsupportedOperationException("Método auxiliar para implementar");
-    }
-    private void executeCatMove(HexGameState gameState, String difficulty) {
-        throw new UnsupportedOperationException("Método auxiliar para implementar");
-    }
-    private int calculateAdvancedScore(HexGameState gameState, Map<String, Object> factors) {
-        throw new UnsupportedOperationException("Método auxiliar para implementar");
-    }
-    private void notifyGameEvent(String gameId, String eventType, Map<String, Object> eventData) {
-        throw new UnsupportedOperationException("Método auxiliar para implementar");
-    }
-    private CatMovementStrategy createMovementStrategy(String difficulty, HexGameBoard board) {
-        throw new UnsupportedOperationException("Método auxiliar para implementar");
-    }
-    @Override
-    protected void initializeGame(GameState<HexPosition> gameState, GameBoard<HexPosition> gameBoard) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar initializeGame");
-    }
-    @Override
-    public boolean isValidMove(String gameId, HexPosition position) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar isValidMove");
-    }
-    @Override
-    public Optional<HexPosition> getSuggestedMove(String gameId) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar getSuggestedMove");
-    }
-    @Override
-    protected HexPosition getTargetPosition(GameState<HexPosition> gameState) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar getTargetPosition");
-    }
-    @Override
-    public Object getGameStatistics(String gameId) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar getGameStatistics");
+
+    // Chequea si la celda está dentro de los límites del tablero
+    private boolean isInBoard(int q, int r, int boardSize) {
+        int s = -q - r;
+        return Math.abs(q) <= boardSize && Math.abs(r) <= boardSize && Math.abs(s) <= boardSize;
     }
 }
