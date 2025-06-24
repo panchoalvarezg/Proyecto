@@ -1,146 +1,67 @@
-package com.atraparalagato.impl.model;
+package com.atraparalagato.impl.service;
 
 import com.atraparalagato.base.model.GameState;
+import com.atraparalagato.impl.model.HexGameState;
+import com.atraparalagato.impl.model.HexPosition;
+import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class HexGameState extends GameState<HexPosition> {
-    private HexPosition catPosition;
-    private boolean playerWon;
-    private int score;
-    private final int boardSize;
-    private final Set<HexPosition> blockedPositions = new HashSet<>();
+@Service
+public class HexGameService {
 
-    public HexGameState(String gameId, int boardSize) {
-        super(gameId);
-        this.boardSize = boardSize;
-        // El gato inicia en q = 0, r = boardSize / 2 (es decir, columna izquierda, centro vertical)
-        this.catPosition = new HexPosition(0, boardSize / 2);
-        this.playerWon = false;
-        this.score = 0;
+    private final Map<String, GameState<HexPosition>> games = new ConcurrentHashMap<>();
+
+    /**
+     * Inicia un nuevo juego y lo registra en el mapa.
+     * @param boardSize Tamaño del tablero.
+     * @return El estado inicial del juego.
+     */
+    public GameState<HexPosition> startNewGame(int boardSize) {
+        String gameId = UUID.randomUUID().toString();
+        GameState<HexPosition> gameState = new HexGameState(gameId, boardSize);
+        games.put(gameId, gameState);
+        return gameState;
     }
 
-    @Override
-    protected boolean canExecuteMove(HexPosition position) {
-        return status == GameStatus.IN_PROGRESS 
-            && !catPosition.equals(position) 
-            && !blockedPositions.contains(position);
-    }
-
-    @Override
-    protected boolean performMove(HexPosition position) {
-        // Este método puede usarse para lógica adicional de movimiento si lo deseas
-        return canExecuteMove(position);
-    }
-
-    @Override
-    public void updateGameStatus() {
-        // El jugador gana si el gato sale del tablero
-        if (!catPosition.isWithinBounds(boardSize)) {
-            status = GameStatus.PLAYER_WON;
-            playerWon = true;
-        } else if (getFreeNeighbors(catPosition).isEmpty()) {
-            // Si el gato no puede moverse, el jugador pierde
-            status = GameStatus.PLAYER_LOST;
-            playerWon = false;
-        } else {
-            status = GameStatus.IN_PROGRESS;
+    /**
+     * Ejecuta el movimiento del jugador (bloqueo de celda) y mueve el gato en el juego correspondiente.
+     * @param gameId ID del juego
+     * @param position Posición a bloquear por el jugador
+     * @return Estado actualizado del juego, si existe el juego.
+     */
+    public Optional<GameState<HexPosition>> executePlayerMove(String gameId, HexPosition position) {
+        GameState<HexPosition> gameState = games.get(gameId);
+        if (gameState == null) {
+            return Optional.empty();
         }
-    }
+        if (gameState instanceof HexGameState hexGameState) {
+            // 1. Bloquea la celda seleccionada por el usuario
+            hexGameState.blockCell(position);
 
-    @Override
-    public HexPosition getCatPosition() {
-        return catPosition;
-    }
+            // 2. Mueve el gato a un vecino libre (simple: primer vecino libre)
+            HexPosition cat = hexGameState.getCatPosition();
+            List<HexPosition> neighbors = hexGameState.getFreeNeighbors(cat);
 
-    @Override
-    public void setCatPosition(HexPosition position) {
-        this.catPosition = position;
-    }
-
-    @Override
-    public boolean isGameFinished() {
-        return status != GameStatus.IN_PROGRESS;
-    }
-
-    @Override
-    public boolean hasPlayerWon() {
-        return playerWon;
-    }
-
-    @Override
-    public int calculateScore() {
-        return score;
-    }
-
-    public Set<HexPosition> getBlockedPositions() {
-        return blockedPositions;
-    }
-
-    public void blockCell(HexPosition pos) {
-        blockedPositions.add(pos);
-    }
-
-    public int getBoardSize() {
-        return boardSize;
-    }
-
-    public java.util.List<HexPosition> getFreeNeighbors(HexPosition cat) {
-        int[][] dirs = {{1,0},{0,1},{-1,1},{-1,0},{0,-1},{1,-1}};
-        java.util.List<HexPosition> result = new java.util.ArrayList<>();
-        for (int[] d : dirs) {
-            HexPosition neighbor = new HexPosition(cat.getQ() + d[0], cat.getR() + d[1]);
-            if (neighbor.isWithinBounds(boardSize) && !blockedPositions.contains(neighbor)) {
-                result.add(neighbor);
+            if (!neighbors.isEmpty()) {
+                // Mueve el gato a la primera celda libre adyacente
+                HexPosition nextCat = neighbors.get(0);
+                hexGameState.setCatPosition(nextCat);
             }
+
+            // 3. Actualiza el estado del juego
+            hexGameState.updateGameStatus();
         }
-        return result;
+        return Optional.of(gameState);
     }
 
-    @Override
-    public Object getSerializableState() {
-        Map<String, Object> map = new HashMap<>();
-        map.put("catQ", catPosition.getQ());
-        map.put("catR", catPosition.getR());
-        map.put("playerWon", playerWon);
-        map.put("score", score);
-        map.put("status", status.name());
-        map.put("moveCount", moveCount);
-        map.put("gameId", gameId);
-        map.put("createdAt", createdAt);
-        map.put("boardSize", boardSize);
-        map.put("blockedCells",
-            blockedPositions.stream()
-                .map(pos -> Map.of("q", pos.getQ(), "r", pos.getR()))
-                .toList()
-        );
-        return map;
-    }
-
-    @Override
-    public void restoreFromSerializable(Object serializedState) {
-        if (!(serializedState instanceof Map)) return;
-        Map<?, ?> map = (Map<?, ?>) serializedState;
-        int q = (int) map.get("catQ");
-        int r = (int) map.get("catR");
-        this.catPosition = new HexPosition(q, r);
-        this.playerWon = (boolean) map.get("playerWon");
-        this.score = (int) map.get("score");
-        this.status = GameStatus.valueOf((String) map.get("status"));
-        Object blocked = map.get("blockedCells");
-        if (blocked instanceof Iterable<?> iterable) {
-            for (Object o : iterable) {
-                if (o instanceof Map<?,?> posmap) {
-                    Object oq = posmap.get("q");
-                    Object or = posmap.get("r");
-                    if (oq instanceof Integer iq && or instanceof Integer ir) {
-                        blockedPositions.add(new HexPosition(iq, ir));
-                    }
-                }
-            }
-        }
+    /**
+     * Permite consultar el estado actual de un juego por su ID.
+     * @param gameId ID del juego
+     * @return Optional con el estado del juego si existe.
+     */
+    public Optional<GameState<HexPosition>> getGameState(String gameId) {
+        return Optional.ofNullable(games.get(gameId));
     }
 }
