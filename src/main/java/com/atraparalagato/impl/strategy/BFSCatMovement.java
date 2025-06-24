@@ -1,59 +1,51 @@
 package com.atraparalagato.impl.strategy;
 
-import com.atraparalagato.base.strategy.CatMovementStrategy;
-import com.atraparalagato.impl.model.HexPosition;
-import com.atraparalagato.base.model.GameBoard;
+import com.atraparalagato.impl.model.*;
+import java.util.*;
+import java.util.function.*;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.function.Function;
-import java.util.function.Predicate;
-
-public class BFSCatMovement extends CatMovementStrategy<HexPosition> {
-
-    public BFSCatMovement(GameBoard<HexPosition> board) {
-        super(board);
+public class BFSCatMovement {
+    public List<HexPosition> getPossibleMoves(HexGameBoard board, HexPosition from) {
+        return board.getAdjacentPositions(from);
     }
 
-    @Override
-    protected List<HexPosition> getPossibleMoves(HexPosition currentPosition) {
-        // Implementa lógica BFS aquí
-        return List.of();
+    public HexPosition selectBestMove(HexGameBoard board, HexPosition from, Predicate<HexPosition> goal) {
+        List<HexPosition> path = getFullPath(board, from, goal);
+        if (path.size() > 1) return path.get(1);
+        return from;
     }
 
-    @Override
-    protected Optional<HexPosition> selectBestMove(List<HexPosition> possibleMoves, HexPosition currentPosition, HexPosition targetPosition) {
-        // Implementa lógica BFS aquí
-        return possibleMoves.stream().findFirst();
+    public boolean hasPathToGoal(HexGameBoard board, HexPosition from, Predicate<HexPosition> goalPredicate) {
+        return !getFullPath(board, from, goalPredicate).isEmpty();
     }
 
-    @Override
-    protected Function<HexPosition, Double> getHeuristicFunction(HexPosition targetPosition) {
-        // BFS normalmente no usa heurística, pero debes devolver una función (por ejemplo, siempre 0.0)
-        return pos -> 0.0;
-    }
-
-    @Override
-    protected Predicate<HexPosition> getGoalPredicate() {
-        // Implementa el predicado de objetivo para BFS
-        return pos -> true;
-    }
-
-    @Override
-    protected double getMoveCost(HexPosition from, HexPosition to) {
-        // BFS normalmente considera todos los costos iguales (1.0)
-        return 1.0;
-    }
-
-    @Override
-    public boolean hasPathToGoal(HexPosition currentPosition) {
-        // Implementa lógica adecuada
-        return false;
-    }
-
-    @Override
-    public List<HexPosition> getFullPath(HexPosition currentPosition, HexPosition targetPosition) {
-        // Implementa lógica adecuada
-        return List.of();
+    public List<HexPosition> getFullPath(HexGameBoard board, HexPosition from, Predicate<HexPosition> goalPredicate) {
+        Queue<HexPosition> queue = new LinkedList<>();
+        Map<HexPosition, HexPosition> cameFrom = new HashMap<>();
+        Set<HexPosition> visited = new HashSet<>();
+        queue.add(from);
+        visited.add(from);
+        while (!queue.isEmpty()) {
+            HexPosition curr = queue.poll();
+            if (goalPredicate.test(curr)) {
+                // reconstruir camino
+                List<HexPosition> path = new ArrayList<>();
+                HexPosition step = curr;
+                while (step != null) {
+                    path.add(step);
+                    step = cameFrom.get(step);
+                }
+                Collections.reverse(path);
+                return path;
+            }
+            for (HexPosition neighbor : board.getAdjacentPositions(curr)) {
+                if (!visited.contains(neighbor)) {
+                    visited.add(neighbor);
+                    cameFrom.put(neighbor, curr);
+                    queue.add(neighbor);
+                }
+            }
+        }
+        return Collections.emptyList();
     }
 }
