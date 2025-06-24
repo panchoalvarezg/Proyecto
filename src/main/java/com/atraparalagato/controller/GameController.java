@@ -1,6 +1,7 @@
 package com.atraparalagato.controller;
 
 import com.atraparalagato.base.model.GameState;
+import com.atraparalagato.impl.model.HexGameState;
 import com.atraparalagato.impl.model.HexPosition;
 import com.atraparalagato.impl.service.HexGameService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +26,7 @@ public class GameController {
     @GetMapping("/start")
     public ResponseEntity<Map<String, Object>> startGame(@RequestParam(defaultValue = "11") int boardSize) {
         GameState<HexPosition> gameState = hexGameService.startNewGame(boardSize);
-        return ResponseEntity.ok(gameStateToMap(gameState, boardSize));
+        return ResponseEntity.ok(gameStateToMap(gameState));
     }
 
     @PostMapping("/block")
@@ -39,8 +40,7 @@ public class GameController {
             return ResponseEntity.notFound().build();
         }
         GameState<HexPosition> gameState = gameStateOpt.get();
-        // El tamaño del tablero no está en GameState, así que asumimos 11 (o puedes guardarlo en otro lado)
-        return ResponseEntity.ok(gameStateToMap(gameState, 11));
+        return ResponseEntity.ok(gameStateToMap(gameState));
     }
 
     @GetMapping("/state/{gameId}")
@@ -50,30 +50,33 @@ public class GameController {
             return ResponseEntity.notFound().build();
         }
         GameState<HexPosition> gameState = gameStateOpt.get();
-        return ResponseEntity.ok(gameStateToMap(gameState, 11));
+        return ResponseEntity.ok(gameStateToMap(gameState));
     }
 
     // Utilidad para construir la respuesta JSON
-    private Map<String, Object> gameStateToMap(GameState<HexPosition> gameState, int boardSize) {
+    private Map<String, Object> gameStateToMap(GameState<HexPosition> gameState) {
         Map<String, Object> response = new HashMap<>();
         HexPosition cat = gameState.getCatPosition();
         response.put("gameId", gameState.getGameId());
         response.put("cat", Map.of("q", cat.getQ(), "r", cat.getR()));
         response.put("movesCount", gameState.getMoveCount());
         response.put("status", gameState.getStatus() != null ? gameState.getStatus().toString() : "IN_PROGRESS");
-        response.put("boardSize", boardSize);
         response.put("implementation", "impl");
-        // Bloqueadas (usando GameState.getBlockedPositions())
-        if (gameState.getBlockedPositions() != null) {
+
+        // Cast para obtener información específica de HexGameState
+        if (gameState instanceof HexGameState hexGameState) {
+            response.put("boardSize", hexGameState.getBoardSize());
             response.put("blockedCells",
-                gameState.getBlockedPositions()
+                hexGameState.getBlockedPositions()
                     .stream()
                     .map(pos -> Map.of("q", pos.getQ(), "r", pos.getR()))
                     .collect(Collectors.toList())
             );
         } else {
+            response.put("boardSize", 11);
             response.put("blockedCells", new ArrayList<>());
         }
+
         return response;
     }
 }
