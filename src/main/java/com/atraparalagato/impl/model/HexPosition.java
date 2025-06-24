@@ -4,7 +4,7 @@ import com.atraparalagato.base.model.Position;
 import java.io.Serializable;
 import java.util.Objects;
 
-public class HexPosition implements GamePosition, Serializable {
+public class HexPosition implements Position, Serializable {
     private final int q;
     private final int r;
 
