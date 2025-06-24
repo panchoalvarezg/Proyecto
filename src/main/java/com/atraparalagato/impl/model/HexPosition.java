@@ -1,6 +1,6 @@
 package com.atraparalagato.impl.model;
 
-import com.atraparalagato.base.model.GamePosition;
+import com.atraparalagato.base.model.Position;
 import java.io.Serializable;
 import java.util.Objects;
 
