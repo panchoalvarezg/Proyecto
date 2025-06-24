@@ -3,39 +3,44 @@ package com.atraparalagato.impl.model;
 import com.atraparalagato.base.model.GameState;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class HexGameState extends GameState<HexPosition> {
     private HexPosition catPosition;
     private boolean playerWon;
     private int score;
+    private final int boardSize;
+    private final Set<HexPosition> blockedPositions = new HashSet<>();
 
-    public HexGameState(String gameId, HexPosition initialCatPosition) {
+    public HexGameState(String gameId, HexPosition initialCatPosition, int boardSize) {
         super(gameId);
         this.catPosition = initialCatPosition;
         this.playerWon = false;
         this.score = 0;
+        this.boardSize = boardSize;
     }
 
     @Override
     protected boolean canExecuteMove(HexPosition position) {
-        return status == GameStatus.IN_PROGRESS && !catPosition.equals(position);
+        return status == GameStatus.IN_PROGRESS && !catPosition.equals(position) && !blockedPositions.contains(position);
     }
 
     @Override
     protected boolean performMove(HexPosition position) {
         if (!canExecuteMove(position)) return false;
-        setCatPosition(position);
+        blockCell(position);
         return true;
     }
 
     @Override
     protected void updateGameStatus() {
         // Ejemplo: lógica básica, puedes mejorarla
-        if (!catPosition.isWithinBounds(11)) { // Suponiendo un tablero de 11x11
+        if (!catPosition.isWithinBounds(boardSize)) {
             status = GameStatus.PLAYER_WON;
             playerWon = true;
-        } else if (/* condición de perder */ false) {
+        } else if (false) { // Aquí tu condición de derrota
             status = GameStatus.PLAYER_LOST;
             playerWon = false;
         } else {
@@ -68,6 +73,18 @@ public class HexGameState extends GameState<HexPosition> {
         return score;
     }
 
+    public Set<HexPosition> getBlockedPositions() {
+        return blockedPositions;
+    }
+
+    public void blockCell(HexPosition pos) {
+        blockedPositions.add(pos);
+    }
+
+    public int getBoardSize() {
+        return boardSize;
+    }
+
     @Override
     public Object getSerializableState() {
         Map<String, Object> map = new HashMap<>();
@@ -79,6 +96,12 @@ public class HexGameState extends GameState<HexPosition> {
         map.put("moveCount", moveCount);
         map.put("gameId", gameId);
         map.put("createdAt", createdAt);
+        map.put("boardSize", boardSize);
+        map.put("blockedCells",
+            blockedPositions.stream()
+                .map(pos -> Map.of("q", pos.getQ(), "r", pos.getR()))
+                .toList()
+        );
         return map;
     }
 
@@ -92,5 +115,18 @@ public class HexGameState extends GameState<HexPosition> {
         this.playerWon = (boolean) map.get("playerWon");
         this.score = (int) map.get("score");
         this.status = GameStatus.valueOf((String) map.get("status"));
+        // Restaura celdas bloqueadas si es necesario
+        Object blocked = map.get("blockedCells");
+        if (blocked instanceof Iterable<?> iterable) {
+            for (Object o : iterable) {
+                if (o instanceof Map<?,?> posmap) {
+                    Object oq = posmap.get("q");
+                    Object or = posmap.get("r");
+                    if (oq instanceof Integer iq && or instanceof Integer ir) {
+                        blockedPositions.add(new HexPosition(iq, ir));
+                    }
+                }
+            }
+        }
     }
 }
