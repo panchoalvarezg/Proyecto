@@ -47,7 +47,10 @@ public class HexGameBoard extends GameBoard<HexPosition> {
                 Math.abs(position.getS()) <= size;
     }
 
-    // Verifica si una posición es válida para que el jugador la bloquee, lanzando excepciones con mensajes claros en caso de error
+    /**
+     * Verifica si una posición es válida para que el jugador la bloquee.
+     * Lanza IllegalArgumentException con mensajes claros si el movimiento no es permitido.
+     */
     @Override
     protected boolean isValidMove(HexPosition position) {
         if (!isPositionInBounds(position)) {
@@ -56,10 +59,21 @@ public class HexGameBoard extends GameBoard<HexPosition> {
         if (isBlocked(position)) {
             throw new IllegalArgumentException("La celda ya está bloqueada.");
         }
-        if (position.isAtBorder(size)) {
+        // Si HexPosition no tiene isAtBorder, implementa aquí el chequeo de borde:
+        if (isAtBorder(position)) {
             throw new IllegalArgumentException("No se puede bloquear una celda del borde.");
         }
         return true;
+    }
+
+    /**
+     * Determina si una posición está en el borde del tablero.
+     */
+    private boolean isAtBorder(HexPosition position) {
+        int q = position.getQ();
+        int r = position.getR();
+        int s = position.getS();
+        return Math.abs(q) == size || Math.abs(r) == size || Math.abs(s) == size;
     }
 
     // Agrega la posición entregada a las posiciones bloqueadas, no verifica ninguna condición más porque en el contexto de uso ya se validará que la acción es posible antes de ejecutarla
@@ -75,7 +89,7 @@ public class HexGameBoard extends GameBoard<HexPosition> {
             for (int r = -size + 1; r < size; r++) {
                 HexPosition _position = new HexPosition(q, r);
 
-                if (isPositionInBounds(_position) && !_position.isAtBorder(size)) {
+                if (isPositionInBounds(_position) && !isAtBorder(_position)) {
                     _positions.add(_position);
                 }
             }
