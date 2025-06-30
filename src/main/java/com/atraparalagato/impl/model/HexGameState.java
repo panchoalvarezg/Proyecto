@@ -16,7 +16,6 @@ import org.json.JSONObject;
 
 /**
  * Implementación de GameState para tableros hexagonales.
- * 
  * Incluye mejoras:
  * - Método público updateStatus para poder establecer el estado desde el servicio.
  * - Validación de dificultad nula/incorrecta.
