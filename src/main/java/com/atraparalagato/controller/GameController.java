@@ -2,7 +2,6 @@ package com.atraparalagato.controller;
 
 import com.atraparalagato.example.model.ExampleGameState;
 import com.atraparalagato.example.service.ExampleGameService;
-import com.atraparalagato.impl.model.HexGameBoard;
 import com.atraparalagato.impl.model.HexGameState;
 import com.atraparalagato.impl.model.HexPosition;
 import com.atraparalagato.impl.service.HexGameService;
@@ -75,7 +74,7 @@ public class GameController {
                 if (gameStateOpt.isEmpty()) {
                     return ResponseEntity.badRequest().body(Map.of("error", "Partida no encontrada."));
                 }
-                boardSize = gameStateOpt.get().getGameBoard().getBoardSize();
+                boardSize = gameStateOpt.get().getGameBoard().getSize(); // Cambiado a getSize()
             }
             int s = -q - r;
             if (Math.abs(q) >= boardSize || Math.abs(r) >= boardSize || Math.abs(s) >= boardSize) {
