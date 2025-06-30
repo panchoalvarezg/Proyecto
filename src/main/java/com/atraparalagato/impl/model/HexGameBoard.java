@@ -59,7 +59,6 @@ public class HexGameBoard extends GameBoard<HexPosition> {
         if (isBlocked(position)) {
             throw new IllegalArgumentException("La celda ya está bloqueada.");
         }
-        // Si HexPosition no tiene isAtBorder, implementa aquí el chequeo de borde:
         if (isAtBorder(position)) {
             throw new IllegalArgumentException("No se puede bloquear una celda del borde.");
         }
