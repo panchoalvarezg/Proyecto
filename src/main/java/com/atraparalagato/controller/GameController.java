@@ -64,19 +64,11 @@ public ResponseEntity<Map<String, Object>> blockPosition(
     try {
         HexPosition position = new HexPosition(q, r);
 
-        Optional<HexGameState> optionalGame = hexGameService.getGameState(gameId);
-        if (optionalGame.isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "GameId no válido o partida inexistente."));
-        }
-
         Optional<HexGameState> result = hexGameService.executePlayerMove(gameId, position, null);
         if (result.isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Movimiento inválido o partida no encontrada."));
+            return ResponseEntity.badRequest().body(Map.of("error", "Movimiento inválido o partida no encontrada."));
         }
 
-        // Devuelve el estado actualizado del juego
         HexGameState gameState = result.get();
         Map<String, Object> response = new HashMap<>();
         response.put("gameId", gameState.getGameId());
@@ -89,12 +81,12 @@ public ResponseEntity<Map<String, Object>> blockPosition(
         return ResponseEntity.ok(response);
 
     } catch (IllegalArgumentException e) {
-        return ResponseEntity.badRequest()
-                .body(Map.of("error", e.getMessage()));
+        // Captura cualquier error de movimiento inválido y responde 400
+        return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
     } catch (Exception e) {
-        e.printStackTrace(); // Útil para debug
-        return ResponseEntity.internalServerError()
-                .body(Map.of("error", "Error interno al ejecutar movimiento: " + e.getMessage()));
+        // Cualquier otro error
+        e.printStackTrace();
+        return ResponseEntity.internalServerError().body(Map.of("error", "Error interno al ejecutar movimiento: " + e.getMessage()));
     }
 }
     
