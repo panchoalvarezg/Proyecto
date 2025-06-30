@@ -61,15 +61,23 @@ public ResponseEntity<Map<String, Object>> blockPosition(
         @RequestParam String gameId,
         @RequestParam int q,
         @RequestParam int r) {
+    // Log de entrada de parámetros
+    System.out.println("[/api/game/block] Intentando bloquear posición: gameId=" + gameId + ", q=" + q + ", r=" + r);
+
     try {
         HexPosition position = new HexPosition(q, r);
+        System.out.println("[/api/game/block] HexPosition creada: " + position);
 
         Optional<HexGameState> result = hexGameService.executePlayerMove(gameId, position, null);
+
         if (result.isEmpty()) {
+            System.out.println("[/api/game/block] Movimiento inválido o partida no encontrada para gameId=" + gameId);
             return ResponseEntity.badRequest().body(Map.of("error", "Movimiento inválido o partida no encontrada."));
         }
 
         HexGameState gameState = result.get();
+        System.out.println("[/api/game/block] Movimiento ejecutado correctamente. Estado: " + gameState.getStatus());
+
         Map<String, Object> response = new HashMap<>();
         response.put("gameId", gameState.getGameId());
         response.put("status", gameState.getStatus().toString());
@@ -81,10 +89,12 @@ public ResponseEntity<Map<String, Object>> blockPosition(
         return ResponseEntity.ok(response);
 
     } catch (IllegalArgumentException e) {
-        // Captura cualquier error de movimiento inválido y responde 400
+        // Log de error de movimiento inválido
+        System.out.println("[/api/game/block] Movimiento inválido (IllegalArgumentException): " + e.getMessage());
         return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
     } catch (Exception e) {
-        // Cualquier otro error
+        // Log de error inesperado
+        System.out.println("[/api/game/block] Error inesperado: " + e.getMessage());
         e.printStackTrace();
         return ResponseEntity.internalServerError().body(Map.of("error", "Error interno al ejecutar movimiento: " + e.getMessage()));
     }
