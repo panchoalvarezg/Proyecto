@@ -118,7 +118,6 @@ class Game {
         };
 
         const cells = this.generateCellPositions(boardConfig)
-            .filter(cell => cell.type === 'playable' ? Game.isValidCell(cell.q, cell.r, this.boardSize) : true)
             .map(cell => this.createHexCell(cell, gameState, boardConfig));
 
         cells.forEach(cell => this.board.appendChild(cell));
@@ -170,8 +169,12 @@ class Game {
             cell.classList.add('cat');
         } else if (isBlocked) {
             cell.classList.add('blocked');
-        } else if (position.type === 'playable' && Game.isValidCell(position.q, position.r, this.boardSize)) {
-            // Solo permite clic en celdas 'playable' y válidas
+        } else if (
+            position.type === 'playable' &&
+            Game.isValidCell(position.q, position.r, this.boardSize) &&
+            gameState.status === 'IN_PROGRESS' &&
+            !(gameState.catPosition && position.q === gameState.catPosition.q && position.r === gameState.catPosition.r)
+        ) {
             cell.addEventListener('click', () => this.makeMove(position.q, position.r));
             cell.classList.add('clickable');
         }
