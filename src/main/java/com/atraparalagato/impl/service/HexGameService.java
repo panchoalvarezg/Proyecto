@@ -39,12 +39,13 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
     }
 
     /**
-     * Ejecuta el movimiento del jugador. Devuelve Optional.empty() si:
+     * Ejecuta el movimiento del jugador.
+     * Lanza IllegalArgumentException si:
      * - El gameId no existe
      * - El juego no está en progreso
      * - El movimiento es inválido (fuera de rango, celda bloqueada, etc)
      *
-     * El controlador debe interpretar Optional.empty() como error de usuario (400).
+     * El controlador debe capturar IllegalArgumentException y responder con 400.
      */
     public Optional<HexGameState> executePlayerMove(String gameId, HexPosition position, String playerId) {
         System.out.println("Recibiendo gameId=" + gameId + " con posición " + position);
@@ -52,13 +53,13 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
         Optional<HexGameState> optional = getGameState(gameId);
         if (optional.isEmpty()) {
             System.out.println("❌ Game ID no encontrado.");
-            return Optional.empty();
+            throw new IllegalArgumentException("Game ID no válido o partida inexistente.");
         }
         HexGameState gameState = optional.get();
 
         if (gameState.getStatus() != GameStatus.IN_PROGRESS) {
             System.out.println("⏸️ La partida no está en progreso.");
-            return Optional.empty();
+            throw new IllegalArgumentException("La partida no está en progreso.");
         }
 
         HexGameBoard board = gameState.getGameBoard();
@@ -67,17 +68,20 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
         // Validación de límites del tablero
         if (!board.isPositionInBounds(position)) {
             System.out.println("❌ Posición fuera de los límites del tablero.");
-            return Optional.empty();
+            throw new IllegalArgumentException("Posición fuera de los límites del tablero.");
         }
 
         if (cat.equals(position)) {
             System.out.println("❌ No puedes bloquear la posición donde está el gato.");
-            return Optional.empty();
+            throw new IllegalArgumentException("No puedes bloquear la posición donde está el gato.");
         }
         if (board.isBlocked(position)) {
             System.out.println("❌ La celda ya está bloqueada.");
-            return Optional.empty();
+            throw new IllegalArgumentException("La celda ya está bloqueada.");
         }
+
+        // Validación hexagonal robusta
+        board.isValidMove(position);  // Lanza IllegalArgumentException si inválido
 
         board.getBlockedPositions().add(position);
 
