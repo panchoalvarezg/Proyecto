@@ -1,12 +1,3 @@
-// SOLID Principles Applied:
-// S - Single Responsibility: Each class/function has one clear purpose
-// O - Open/Closed: Game class is open for extension, closed for modification
-// L - Liskov Substitution: Methods can be overridden without breaking functionality
-// I - Interface Segregation: Clean, focused interfaces
-// D - Dependency Inversion: Game depends on abstractions, not concrete implementations
-
-// Higher-Order Functions and Functional Programming concepts applied throughout
-
 class Game {
     constructor() {
         this.gameId = null;
@@ -16,18 +7,14 @@ class Game {
         this.movesElement = document.getElementById('moves-count');
         this.startButton = document.getElementById('start-game');
         this.playerNameInput = document.getElementById('player-name');
-        this.gameState = null; // Store last known game state
-        
-        // Dependency Injection - Game depends on DOM abstractions
+        this.gameState = null;
         this.initializeEventListeners();
     }
-    
-    // Single Responsibility: Initialize event listeners only
+
     initializeEventListeners() {
         this.startButton.addEventListener('click', () => this.startNewGame());
     }
-    
-    // Higher-Order Function: Returns a function that handles API calls
+
     createApiCall(url, options = {}) {
         return async () => {
             try {
@@ -46,29 +33,21 @@ class Game {
             }
         };
     }
-    
-    // Single Responsibility: Start new game only
+
     async startNewGame() {
         try {
             this.removeGameOverDialogs();
-
-            // Debug: log startNewGame
             console.log("Iniciando nuevo juego...");
-            const apiCall = this.createApiCall(`/api/game/start?boardSize=${this.boardSize}`, {
-                method: 'GET'
-            });
-            
+            const apiCall = this.createApiCall(`/api/game/start?boardSize=${this.boardSize}`, { method: 'GET' });
             const gameState = await apiCall();
             console.log("Respuesta backend:", gameState);
 
-            // CAMBIO: Usar catPosition en vez de cat
             if (!gameState || !gameState.gameId || !gameState.catPosition || typeof gameState.movesCount === "undefined" || !gameState.status) {
                 throw new Error('Respuesta inesperada del backend');
             }
 
             this.gameId = gameState.gameId;
             this.gameState = gameState;
-            // Actualizamos boardSize dinámicamente por si el backend lo envía
             if (gameState.boardSize) {
                 this.boardSize = gameState.boardSize;
             }
@@ -79,34 +58,32 @@ class Game {
             this.handleError('Error al iniciar el juego', error);
         }
     }
-    
-    // Single Responsibility: Remove game over dialogs
+
     removeGameOverDialogs() {
         const existingDialogs = document.querySelectorAll('.game-over');
         existingDialogs.forEach(dialog => dialog.remove());
     }
-    
-    // Single Responsibility: Handle player moves only
+
     async makeMove(q, r) {
         if (!this.gameId) return;
-        
+
         // No permitir bloquear la celda donde está el gato
         if (this.gameState && this.gameState.catPosition && q === this.gameState.catPosition.q && r === this.gameState.catPosition.r) {
             return;
         }
-        
+
         // Validar en frontend que el movimiento esté dentro del tablero
         if (!Game.isValidCell(q, r, this.boardSize)) {
             alert("Movimiento fuera de rango.");
             return;
         }
-        
+
         try {
             const apiCall = this.createApiCall(
-                `/api/game/block?gameId=${this.gameId}&q=${q}&r=${r}`, 
+                `/api/game/block?gameId=${this.gameId}&q=${q}&r=${r}`,
                 { method: 'POST' }
             );
-            
+
             const gameState = await apiCall();
             console.log("Respuesta movimiento:", gameState);
 
@@ -114,10 +91,10 @@ class Game {
             this.renderBoard(gameState);
             this.updateStatus(gameState.status);
             this.updateMovesCount(gameState.movesCount || 0);
-            
+
             const gameEndStates = ['PLAYER_LOST', 'PLAYER_WON'];
             const isGameOver = gameEndStates.some(state => state === gameState.status);
-            
+
             if (isGameOver) {
                 this.showGameOver(gameState.status);
             }
@@ -125,18 +102,13 @@ class Game {
             this.handleError('Error al realizar el movimiento', error);
         }
     }
-    
-    // Single Responsibility: Update moves count display
+
     updateMovesCount(count) {
         this.movesElement.textContent = count;
     }
-    
-    // Single Responsibility: Render board only
-    // Modular Programming: Separated concerns for board rendering
+
     renderBoard(gameState) {
         this.board.innerHTML = '';
-        
-        // Configuration object - Modular approach with improved spacing
         const boardConfig = {
             hexSize: 25,
             centerX: 375,
@@ -144,15 +116,13 @@ class Game {
             cellWidth: 40,
             cellHeight: 46
         };
-        
-        // Functional Programming: Generate all cells (both playable and border)
+
         const cells = this.generateCellPositions(boardConfig)
             .map(cell => this.createHexCell(cell, gameState, boardConfig));
-        
+
         cells.forEach(cell => this.board.appendChild(cell));
     }
-    
-    // Pure Function: Generate cell positions without side effects
+
     generateCellPositions(config) {
         const positions = [];
         for (let q = -this.boardSize; q <= this.boardSize; q++) {
@@ -161,9 +131,9 @@ class Game {
                 if (Math.abs(s) <= this.boardSize) {
                     const x = config.centerX + config.hexSize * (3/2 * q);
                     const y = config.centerY + config.hexSize * (Math.sqrt(3)/2 * q + Math.sqrt(3) * r);
-                    const isBorder = Math.abs(q) === this.boardSize || 
-                                   Math.abs(r) === this.boardSize || 
-                                   Math.abs(s) === this.boardSize;
+                    const isBorder = Math.abs(q) === this.boardSize ||
+                                     Math.abs(r) === this.boardSize ||
+                                     Math.abs(s) === this.boardSize;
                     const type = isBorder ? 'border' : 'playable';
                     positions.push({ q, r, x, y, type });
                 }
@@ -171,19 +141,18 @@ class Game {
         }
         return positions;
     }
-    
-    // Pure Static Function: Check if position is valid for playing (not border)
+
+    // Función revisada y correcta para validez de celdas hexagonales
     static isValidCell(q, r, boardSize) {
-        // Un tablero hexagonal de centro (0,0) tiene válidos los que cumplen |q|<boardSize, |r|<boardSize, |s|<boardSize y no están en borde
         const s = -q - r;
+        // Solo son válidas las celdas dentro del hexágono principal, no en el borde
         return (
             Math.abs(q) < boardSize &&
             Math.abs(r) < boardSize &&
             Math.abs(s) < boardSize
         );
     }
-    
-    // Factory Method Pattern: Create hex cells
+
     createHexCell(position, gameState, config) {
         const cell = document.createElement('div');
         cell.className = position.type === 'border' ? 'hex-cell border-cell' : 'hex-cell';
@@ -193,9 +162,7 @@ class Game {
         cell.setAttribute('data-r', position.r);
         cell.setAttribute('data-type', position.type);
 
-        // CAMBIO: Usar catPosition en vez de cat
         const isCatPosition = gameState.catPosition && position.q === gameState.catPosition.q && position.r === gameState.catPosition.r;
-        // CAMBIO: Manejar blockedCells como array de objetos con q y r
         const isBlocked = Array.isArray(gameState.blockedCells) && gameState.blockedCells.some(pos => pos.q === position.q && pos.r === position.r);
 
         if (isCatPosition) {
@@ -203,7 +170,7 @@ class Game {
         } else if (isBlocked) {
             cell.classList.add('blocked');
         } else if (position.type === 'playable' && Game.isValidCell(position.q, position.r, this.boardSize)) {
-            // Solo permite clic en casillas 'playable' que NO sean el gato y sean válidas por lógica
+            // Solo permite clic en celdas 'playable' y válidas
             cell.addEventListener('click', () => this.makeMove(position.q, position.r));
             cell.classList.add('clickable');
         }
@@ -213,15 +180,13 @@ class Game {
             cell.style.pointerEvents = 'none';
         }
 
-        // Opcional: deshabilita pointer events si es el gato
         if (isCatPosition) {
             cell.style.pointerEvents = 'none';
         }
 
         return cell;
     }
-    
-    // Single Responsibility: Update status display only
+
     updateStatus(status) {
         const statusMessages = {
             'IN_PROGRESS': 'En progreso',
@@ -230,8 +195,7 @@ class Game {
         };
         this.statusElement.textContent = statusMessages[status] || 'Estado desconocido';
     }
-    
-    // Single Responsibility: Show game over dialog only
+
     showGameOver(status) {
         this.removeGameOverDialogs();
         const messages = {
@@ -242,8 +206,7 @@ class Game {
         const gameOver = this.createGameOverDialog(message, status);
         document.body.appendChild(gameOver);
     }
-    
-    // Factory Method: Create game over dialog with improved functionality
+
     createGameOverDialog(message, status) {
         const gameOver = document.createElement('div');
         gameOver.className = 'game-over';
@@ -260,11 +223,11 @@ class Game {
         `;
         return gameOver;
     }
-    
+
     closeGameOverDialog() {
         this.removeGameOverDialogs();
     }
-    
+
     handleError(message, error) {
         console.error(message, error);
         let msg = message;
@@ -275,8 +238,7 @@ class Game {
     }
 }
 
-// Higher-Order Functions for High Score Management
-
+// High Score Management y exportación global
 const createScoreSaver = (gameId, playerName) => async () => {
     try {
         const response = await fetch(`/api/game/save-score?gameId=${gameId}&playerName=${encodeURIComponent(playerName)}`, {
@@ -323,10 +285,10 @@ const scoreDisplayFunctions = {
 
 const formatScore = (score) => {
     const winIcon = score.playerWon ? '🏆' : '❌';
-    const calculatedScore = score.playerWon ? 
-        (1000 - score.movesCount * 10 + score.boardSize * 50 + Math.max(0, 300 - score.gameDurationSeconds)) : 
+    const calculatedScore = score.playerWon ?
+        (1000 - score.movesCount * 10 + score.boardSize * 50 + Math.max(0, 300 - score.gameDurationSeconds)) :
         (100 - score.movesCount * 10);
-    
+
     return {
         playerName: score.playerName,
         details: `${winIcon} ${score.movesCount} movimientos - Tablero ${score.boardSize}x${score.boardSize}`,
@@ -364,7 +326,7 @@ function hideHighScores() {
 
 async function showScoreTab(tabType) {
     document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-    event?.target?.classList.add('active') || 
+    event?.target?.classList.add('active') ||
         document.querySelector(`[onclick="showScoreTab('${tabType}')"]`)?.classList.add('active');
     const scoreFetcher = scoreDisplayFunctions[tabType];
     const scoreRenderer = createScoreRenderer('score-list');
