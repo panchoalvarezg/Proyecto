@@ -1,14 +1,9 @@
 package com.atraparalagato.impl.model;
 
 import com.atraparalagato.base.model.GameBoard;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.*;
 
-/**
- * Implementación de GameBoard para tableros hexagonales usando HexPosition.
- */
 public class HexGameBoard extends GameBoard<HexPosition> {
-
     public HexGameBoard(int size) {
         super(size);
     }
@@ -45,6 +40,19 @@ public class HexGameBoard extends GameBoard<HexPosition> {
     @Override
     protected void executeMove(HexPosition position) {
         blockedPositions.add(position);
+    }
+
+    @Override
+    public List<HexPosition> getAdjacentPositions(HexPosition position) {
+        int[][] deltas = {{1, 0}, {0, 1}, {-1, 1}, {-1, 0}, {0, -1}, {1, -1}};
+        List<HexPosition> neighbors = new ArrayList<>();
+        for (int[] d : deltas) {
+            HexPosition neighbor = new HexPosition(position.getQ() + d[0], position.getR() + d[1]);
+            if (isPositionInBounds(neighbor)) {
+                neighbors.add(neighbor);
+            }
+        }
+        return neighbors;
     }
 
     public void setBlockedPositions(Set<HexPosition> blockedPositions) {
