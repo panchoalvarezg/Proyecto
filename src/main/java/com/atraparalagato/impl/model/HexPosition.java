@@ -37,6 +37,10 @@ public class HexPosition {
         return (Math.abs(q) == border) || (Math.abs(r) == border) || (Math.abs(s) == border);
     }
 
+    public int getS() {
+        return -q - r;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
