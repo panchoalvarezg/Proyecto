@@ -64,21 +64,29 @@ public ResponseEntity<Map<String, Object>> blockPosition(
     try {
         HexPosition position = new HexPosition(q, r);
 
-        // Cambia aquí según tu implementación, pero este es el patrón:
         Optional<HexGameState> optionalGame = hexGameService.getGameState(gameId);
         if (optionalGame.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "GameId no válido o partida inexistente."));
         }
 
-        // ... tu lógica normal ...
-        // Si usas executePlayerMove, controla también su Optional:
         Optional<HexGameState> result = hexGameService.executePlayerMove(gameId, position, null);
         if (result.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "Movimiento inválido o partida no encontrada."));
         }
-        // Continúa como antes...
+
+        // Devuelve el estado actualizado del juego
+        HexGameState gameState = result.get();
+        Map<String, Object> response = new HashMap<>();
+        response.put("gameId", gameState.getGameId());
+        response.put("status", gameState.getStatus().toString());
+        response.put("catPosition", Map.of("q", gameState.getCatPosition().getQ(), "r", gameState.getCatPosition().getR()));
+        response.put("blockedCells", gameState.getGameBoard().getBlockedPositions());
+        response.put("movesCount", gameState.getMoveCount());
+        response.put("implementation", "impl");
+
+        return ResponseEntity.ok(response);
 
     } catch (IllegalArgumentException e) {
         return ResponseEntity.badRequest()
