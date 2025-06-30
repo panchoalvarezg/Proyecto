@@ -38,6 +38,14 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
         return gameRepository.findById(gameId).map(gs -> (HexGameState) gs);
     }
 
+    /**
+     * Ejecuta el movimiento del jugador. Devuelve Optional.empty() si:
+     * - El gameId no existe
+     * - El juego no está en progreso
+     * - El movimiento es inválido (fuera de rango, celda bloqueada, etc)
+     *
+     * El controlador debe interpretar Optional.empty() como error de usuario (400).
+     */
     public Optional<HexGameState> executePlayerMove(String gameId, HexPosition position, String playerId) {
         System.out.println("Recibiendo gameId=" + gameId + " con posición " + position);
 
@@ -49,20 +57,26 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
         HexGameState gameState = optional.get();
 
         if (gameState.getStatus() != GameStatus.IN_PROGRESS) {
-            return Optional.of(gameState);
+            System.out.println("⏸️ La partida no está en progreso.");
+            return Optional.empty();
         }
 
         HexGameBoard board = gameState.getGameBoard();
         HexPosition cat = gameState.getCatPosition();
 
-        if (cat.equals(position) || board.isBlocked(position)) {
-            return Optional.of(gameState);
-        }
-
         // Validación de límites del tablero
         if (!board.isPositionInBounds(position)) {
             System.out.println("❌ Posición fuera de los límites del tablero.");
-            return Optional.of(gameState);
+            return Optional.empty();
+        }
+
+        if (cat.equals(position)) {
+            System.out.println("❌ No puedes bloquear la posición donde está el gato.");
+            return Optional.empty();
+        }
+        if (board.isBlocked(position)) {
+            System.out.println("❌ La celda ya está bloqueada.");
+            return Optional.empty();
         }
 
         board.getBlockedPositions().add(position);
