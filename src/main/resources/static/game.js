@@ -96,12 +96,7 @@ class Game {
         }
         
         // Validar en frontend que el movimiento esté dentro del tablero
-        const s = -q - r;
-        if (
-            Math.abs(q) >= this.boardSize ||
-            Math.abs(r) >= this.boardSize ||
-            Math.abs(s) >= this.boardSize
-        ) {
+        if (!Game.isValidCell(q, r, this.boardSize)) {
             alert("Movimiento fuera de rango.");
             return;
         }
@@ -177,19 +172,16 @@ class Game {
         return positions;
     }
     
-    // Pure Function: Check if position is valid for playing (not border)
-function isValidCell(q, r, boardSize) {
-    // Ejemplo para un tablero hexagonal plano de tamaño N centrado en (0,0)
-    // El rango válido es: -center <= q <= center, -center <= r <= center, -center <= s <= center, con q + r + s = 0
-    // Para un tablero con esquina superior izquierda (0,0) se suele usar:
-    return (
-        q >= 0 &&
-        r >= 0 &&
-        q < boardSize &&
-        r < boardSize &&
-        (q + r) < boardSize
-    );
-}
+    // Pure Static Function: Check if position is valid for playing (not border)
+    static isValidCell(q, r, boardSize) {
+        // Un tablero hexagonal de centro (0,0) tiene válidos los que cumplen |q|<boardSize, |r|<boardSize, |s|<boardSize y no están en borde
+        const s = -q - r;
+        return (
+            Math.abs(q) < boardSize &&
+            Math.abs(r) < boardSize &&
+            Math.abs(s) < boardSize
+        );
+    }
     
     // Factory Method Pattern: Create hex cells
     createHexCell(position, gameState, config) {
@@ -210,13 +202,13 @@ function isValidCell(q, r, boardSize) {
             cell.classList.add('cat');
         } else if (isBlocked) {
             cell.classList.add('blocked');
-        } else if (position.type === 'playable') {
-            // Solo permite clic en casillas 'playable' que NO sean el gato
+        } else if (position.type === 'playable' && Game.isValidCell(position.q, position.r, this.boardSize)) {
+            // Solo permite clic en casillas 'playable' que NO sean el gato y sean válidas por lógica
             cell.addEventListener('click', () => this.makeMove(position.q, position.r));
             cell.classList.add('clickable');
         }
 
-        if (position.type === 'border') {
+        if (position.type === 'border' || !Game.isValidCell(position.q, position.r, this.boardSize)) {
             cell.style.opacity = '0.3';
             cell.style.pointerEvents = 'none';
         }
@@ -381,6 +373,12 @@ async function showScoreTab(tabType) {
         scoreRenderer(scores);
     }
 }
+
+// Export functions to global scope for HTML onclick handlers
+window.showHighScores = showHighScores;
+window.hideHighScores = hideHighScores;
+window.showScoreTab = showScoreTab;
+window.saveScore = saveScore;
 
 const initializeGame = () => {
     window.game = new Game();
