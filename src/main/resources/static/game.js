@@ -68,6 +68,10 @@ class Game {
 
             this.gameId = gameState.gameId;
             this.gameState = gameState;
+            // Actualizamos boardSize dinámicamente por si el backend lo envía
+            if (gameState.boardSize) {
+                this.boardSize = gameState.boardSize;
+            }
             this.renderBoard(gameState);
             this.updateStatus(gameState.status);
             this.updateMovesCount(gameState.movesCount || 0);
@@ -88,6 +92,17 @@ class Game {
         
         // No permitir bloquear la celda donde está el gato
         if (this.gameState && this.gameState.catPosition && q === this.gameState.catPosition.q && r === this.gameState.catPosition.r) {
+            return;
+        }
+        
+        // Validar en frontend que el movimiento esté dentro del tablero
+        const s = -q - r;
+        if (
+            Math.abs(q) >= this.boardSize ||
+            Math.abs(r) >= this.boardSize ||
+            Math.abs(s) >= this.boardSize
+        ) {
+            alert("Movimiento fuera de rango.");
             return;
         }
         
