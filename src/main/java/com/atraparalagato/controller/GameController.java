@@ -62,24 +62,29 @@ public ResponseEntity<Map<String, Object>> blockPosition(
         @RequestParam int q,
         @RequestParam int r) {
     try {
-        // Recupera el tamaño del tablero dinámicamente si es posible.
-        int boardSize = 5; // O busca el boardSize del juego actual
-        if (Math.abs(q) >= boardSize || Math.abs(r) >= boardSize || Math.abs(-q - r) >= boardSize) {
-            return ResponseEntity.badRequest()
-                .body(Map.of("error", "Coordenadas fuera de rango"));
-        }
-
         HexPosition position = new HexPosition(q, r);
 
-        if (useExampleImplementation) {
-            return blockPositionWithExample(gameId, position);
-        } else {
-            return blockPositionWithStudentImplementation(gameId, position);
+        // Cambia aquí según tu implementación, pero este es el patrón:
+        Optional<HexGameState> optionalGame = hexGameService.getGameState(gameId);
+        if (optionalGame.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "GameId no válido o partida inexistente."));
         }
+
+        // ... tu lógica normal ...
+        // Si usas executePlayerMove, controla también su Optional:
+        Optional<HexGameState> result = hexGameService.executePlayerMove(gameId, position, null);
+        if (result.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Movimiento inválido o partida no encontrada."));
+        }
+        // Continúa como antes...
+
     } catch (IllegalArgumentException e) {
         return ResponseEntity.badRequest()
                 .body(Map.of("error", e.getMessage()));
     } catch (Exception e) {
+        e.printStackTrace(); // Útil para debug
         return ResponseEntity.internalServerError()
                 .body(Map.of("error", "Error interno al ejecutar movimiento: " + e.getMessage()));
     }
