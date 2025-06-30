@@ -65,3 +65,27 @@ DELETE FROM GAMES WHERE GAME_ID = '07efef86-9717-4d6a-a2a3-9f0dd4d5eb08' [42122-
 	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:659)
 	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63)
 	at java.base/java.lang.Thread.run(Thread.java:1583)
+2025-06-29 22:40:08.022716-04:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "GAMES" not found (this database is empty); SQL statement:
+SELECT gameId, data FROM Games WHERE gameId = '8ba79647-47da-4c53-9572-e8d08ee8bb95' [42104-224]
+2025-06-29 22:40:14.231660-04:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "GAMES" not found (this database is empty); SQL statement:
+SELECT COUNT(gameId) FROM Games WHERE gameId = ? [42104-224]
+2025-06-29 22:40:17.652838-04:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "GAMES" not found (this database is empty); SQL statement:
+SELECT gameId, data FROM Games WHERE gameId = '8ba79647-47da-4c53-9572-e8d08ee8bb95' [42104-224]
+2025-06-29 22:40:18.319073-04:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "GAMES" not found (this database is empty); SQL statement:
+SELECT gameId, data FROM Games WHERE gameId = '8ba79647-47da-4c53-9572-e8d08ee8bb95' [42104-224]
+2025-06-29 22:45:41.714158-04:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "GAMES" not found (this database is empty); SQL statement:
+SELECT * FROM Games [42104-224]
+2025-06-29 22:46:13.658125-04:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "GAMES" not found (this database is empty); SQL statement:
+SELECT COUNT(gameId) FROM Games WHERE gameId = ? [42104-224]
+2025-06-29 22:46:19.965261-04:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "GAMES" not found (this database is empty); SQL statement:
+SELECT COUNT(gameId) FROM Games WHERE gameId = ? [42104-224]
+2025-06-29 22:46:37.196176-04:00 jdbc[15]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "GAMES" not found (this database is empty); SQL statement:
+SELECT * FROM Games [42104-224]
