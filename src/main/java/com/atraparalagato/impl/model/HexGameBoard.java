@@ -52,7 +52,7 @@ public class HexGameBoard extends GameBoard<HexPosition> {
      * Lanza IllegalArgumentException con mensajes claros si el movimiento no es permitido.
      */
     @Override
-    protected boolean isValidMove(HexPosition position) {
+    public boolean isValidMove(HexPosition position) {
         if (!isPositionInBounds(position)) {
             throw new IllegalArgumentException("Coordenadas fuera del tablero.");
         }
