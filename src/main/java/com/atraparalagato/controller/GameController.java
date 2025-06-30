@@ -56,29 +56,34 @@ public class GameController {
      * Ejecuta un movimiento del jugador.
      * Ahora maneja errores de validación devolviendo un 400 con mensaje claro si el movimiento es inválido.
      */
-    @PostMapping("/block")
-    public ResponseEntity<Map<String, Object>> blockPosition(
-            @RequestParam String gameId,
-            @RequestParam int q,
-            @RequestParam int r) {
-        try {
-            HexPosition position = new HexPosition(q, r);
-
-            if (useExampleImplementation) {
-                return blockPositionWithExample(gameId, position);
-            } else {
-                return blockPositionWithStudentImplementation(gameId, position);
-            }
-        } catch (IllegalArgumentException e) {
-            // Errores de validación de movimiento (posición inválida, ya bloqueada, es borde, etc.)
+@PostMapping("/block")
+public ResponseEntity<Map<String, Object>> blockPosition(
+        @RequestParam String gameId,
+        @RequestParam int q,
+        @RequestParam int r) {
+    try {
+        // Recupera el tamaño del tablero dinámicamente si es posible.
+        int boardSize = 5; // O busca el boardSize del juego actual
+        if (Math.abs(q) >= boardSize || Math.abs(r) >= boardSize || Math.abs(-q - r) >= boardSize) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            // Para errores inesperados realmente internos
-            return ResponseEntity.internalServerError()
-                    .body(Map.of("error", "Error interno al ejecutar movimiento: " + e.getMessage()));
+                .body(Map.of("error", "Coordenadas fuera de rango"));
         }
+
+        HexPosition position = new HexPosition(q, r);
+
+        if (useExampleImplementation) {
+            return blockPositionWithExample(gameId, position);
+        } else {
+            return blockPositionWithStudentImplementation(gameId, position);
+        }
+    } catch (IllegalArgumentException e) {
+        return ResponseEntity.badRequest()
+                .body(Map.of("error", e.getMessage()));
+    } catch (Exception e) {
+        return ResponseEntity.internalServerError()
+                .body(Map.of("error", "Error interno al ejecutar movimiento: " + e.getMessage()));
     }
+}
     
     /**
      * Obtiene el estado actual del juego.
