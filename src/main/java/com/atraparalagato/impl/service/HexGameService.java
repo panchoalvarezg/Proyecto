@@ -48,7 +48,10 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
         HexGameState gameState = new HexGameState(gameId, boardSize);
         gameState.setCatPosition(catPosition);
         gameState.setDifficulty(difficulty);
-        gameState.setStatus(GameStatus.IN_PROGRESS); // Asegura que el juego inicia en progreso
+
+        // Usa el método público para cambiar el estado
+        gameState.updateStatus(GameStatus.IN_PROGRESS);
+
         gameState.setMoveCount(0);
 
         gameRepository.save(gameState);
