@@ -1,8 +1,10 @@
 package com.atraparalagato.impl.model;
 
+import com.atraparalagato.base.model.Position;
 import java.util.Objects;
 
-public class HexPosition {
+// IMPLEMENTA Position
+public class HexPosition implements Position {
     private int q;
     private int r;
 
@@ -11,34 +13,23 @@ public class HexPosition {
         this.r = r;
     }
 
-    public int getQ() {
-        return q;
-    }
+    public int getQ() { return q; }
+    public int getR() { return r; }
+    public void setQ(int q) { this.q = q; }
+    public void setR(int r) { this.r = r; }
+    public int getS() { return -q - r; }
 
-    public int getR() {
-        return r;
-    }
-
-    public void setQ(int q) {
-        this.q = q;
-    }
-
-    public void setR(int r) {
-        this.r = r;
-    }
-
-    /**
-     * Un punto está en el borde si |q| == size-1 o |r| == size-1 o |s| == size-1,
-     * donde s = -q - r
-     */
     public boolean isAtBorder(int size) {
         int border = size - 1;
-        int s = -q - r;
+        int s = getS();
         return (Math.abs(q) == border) || (Math.abs(r) == border) || (Math.abs(s) == border);
     }
 
-    public int getS() {
-        return -q - r;
+    public int distanceTo(HexPosition other) {
+        int dq = Math.abs(this.q - other.q);
+        int dr = Math.abs(this.r - other.r);
+        int ds = Math.abs(this.getS() - other.getS());
+        return (dq + dr + ds) / 2;
     }
 
     @Override
