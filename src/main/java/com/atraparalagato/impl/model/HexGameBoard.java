@@ -39,9 +39,9 @@ public class HexGameBoard extends GameBoard<HexPosition> {
         return blockedPositions.contains(position);
     }
 
-    // Verifica si una posición dada está dentro de los bordes del mapa al comparar si alguna variable sobrepasa el límite del tamaño del mapa
+    // Cambiado a public para permitir su uso seguro desde servicios externos
     @Override
-    protected boolean isPositionInBounds(HexPosition position) {
+    public boolean isPositionInBounds(HexPosition position) {
         return Math.abs(position.getQ()) <= size &&
                 Math.abs(position.getR()) <= size &&
                 Math.abs(position.getS()) <= size;
