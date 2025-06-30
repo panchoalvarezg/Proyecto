@@ -36,22 +36,23 @@ public class H2GameRepository extends DataRepository<GameState<HexPosition>, Str
         }
     }
 
-    @Override
-    protected void initialize() {
-        String query = """
-            CREATE TABLE IF NOT EXISTS Games (
-            gameId VARCHAR(255) PRIMARY KEY NOT NULL,
-            data VARCHAR(4096) NOT NULL
-            )
-            """;
-        try {
-            Statement statement = connection.createStatement();
-            statement.executeUpdate(query);
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException("Error al inicializar la base de datos H2", e);
-        }
+@Override
+protected void initialize() {
+    System.out.println("Ejecutando initialize() y creando tabla Games si no existe...");
+    String query = """
+        CREATE TABLE IF NOT EXISTS Games (
+        gameId VARCHAR(255) PRIMARY KEY NOT NULL,
+        data VARCHAR(4096) NOT NULL
+        )
+        """;
+    try {
+        Statement statement = connection.createStatement();
+        statement.executeUpdate(query);
+    } catch (SQLException e) {
+        e.printStackTrace();
+        throw new RuntimeException("Error al inicializar la base de datos H2", e);
     }
+}
 
     @Override
     public GameState<HexPosition> save(GameState<HexPosition> entity) {
