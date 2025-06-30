@@ -1,382 +1,146 @@
-// SOLID Principles Applied:
-// S - Single Responsibility: Each class/function has one clear purpose
-// O - Open/Closed: Game class is open for extension, closed for modification
-// L - Liskov Substitution: Methods can be overridden without breaking functionality
-// I - Interface Segregation: Clean, focused interfaces
-// D - Dependency Inversion: Game depends on abstractions, not concrete implementations
+package com.atraparalagato.impl.service;
 
-// Higher-Order Functions and Functional Programming concepts applied throughout
+import com.atraparalagato.base.model.GameState.GameStatus;
+import com.atraparalagato.impl.model.HexGameState;
+import com.atraparalagato.impl.model.HexGameBoard;
+import com.atraparalagato.impl.model.HexPosition;
+import com.atraparalagato.impl.repository.H2GameRepository;
+import com.atraparalagato.impl.strategy.AStarCatMovement;
+import com.atraparalagato.base.model.GameState;
+import com.atraparalagato.base.model.GameBoard;
 
-class Game {
-    constructor() {
-        this.gameId = null;
-        this.boardSize = 5;
-        this.board = document.getElementById('board');
-        this.statusElement = document.getElementById('game-status');
-        this.movesElement = document.getElementById('moves-count');
-        this.startButton = document.getElementById('start-game');
-        this.playerNameInput = document.getElementById('player-name');
-        this.gameState = null; // Store last known game state
-        
-        // Dependency Injection - Game depends on DOM abstractions
-        this.initializeEventListeners();
+import java.util.*;
+
+public class HexGameService extends com.atraparalagato.base.service.GameService<HexPosition> {
+
+    public HexGameService() {
+        super(
+            new HexGameBoard(5),
+            new AStarCatMovement(new HexGameBoard(5)),
+            new H2GameRepository(),
+            () -> UUID.randomUUID().toString(),
+            (size) -> new HexGameBoard(size),
+            (gameId) -> new HexGameState(gameId, 5)
+        );
     }
-    
-    // Single Responsibility: Initialize event listeners only
-    initializeEventListeners() {
-        this.startButton.addEventListener('click', () => this.startNewGame());
+
+    public HexGameState createGame(int boardSize, String difficulty, Map<String, Object> options) {
+        if (boardSize <= 2) boardSize = 3;
+        String gameId = UUID.randomUUID().toString();
+        HexGameState gameState = new HexGameState(gameId, boardSize);
+        gameState.setDifficulty(difficulty);
+        gameRepository.save(gameState);
+        return gameState;
     }
-    
-    // Higher-Order Function: Returns a function that handles API calls
-    createApiCall(url, options = {}) {
-        return async () => {
-            try {
-                const response = await fetch(url, {
-                    headers: { 'Accept': 'application/json' },
-                    ...options
-                });
-                if (!response.ok) {
-                    const text = await response.text();
-                    throw new Error(`API Error: ${response.status} - ${text}`);
-                }
-                return await response.json();
-            } catch (error) {
-                console.error('API Error:', error);
-                throw error;
-            }
-        };
+
+    @SuppressWarnings("unchecked")
+    public Optional<HexGameState> getGameState(String gameId) {
+        return gameRepository.findById(gameId).map(gs -> (HexGameState) gs);
     }
-    
-    // Single Responsibility: Start new game only
-    async startNewGame() {
-        try {
-            this.removeGameOverDialogs();
 
-            // Debug: log startNewGame
-            console.log("Iniciando nuevo juego...");
-            const apiCall = this.createApiCall(`/api/game/start?boardSize=${this.boardSize}`, {
-                method: 'GET'
-            });
-            
-            const gameState = await apiCall();
-            console.log("Respuesta backend:", gameState);
+    public Optional<HexGameState> executePlayerMove(String gameId, HexPosition position, String playerId) {
+        System.out.println("Recibiendo gameId=" + gameId + " con posición " + position);
 
-            // CAMBIO: Usar catPosition en vez de cat
-            if (!gameState || !gameState.gameId || !gameState.catPosition || typeof gameState.movesCount === "undefined" || !gameState.status) {
-                throw new Error('Respuesta inesperada del backend');
-            }
-
-            this.gameId = gameState.gameId;
-            this.gameState = gameState;
-            // Actualizamos boardSize dinámicamente por si el backend lo envía
-            if (gameState.boardSize) {
-                this.boardSize = gameState.boardSize;
-            }
-            this.renderBoard(gameState);
-            this.updateStatus(gameState.status);
-            this.updateMovesCount(gameState.movesCount || 0);
-        } catch (error) {
-            this.handleError('Error al iniciar el juego', error);
+        Optional<HexGameState> optional = getGameState(gameId);
+        if (optional.isEmpty()) {
+            System.out.println("❌ Game ID no encontrado.");
+            return Optional.empty();
         }
-    }
-    
-    // Single Responsibility: Remove game over dialogs
-    removeGameOverDialogs() {
-        const existingDialogs = document.querySelectorAll('.game-over');
-        existingDialogs.forEach(dialog => dialog.remove());
-    }
-    
-    // Single Responsibility: Handle player moves only
-    async makeMove(q, r) {
-        if (!this.gameId) return;
-        
-        // No permitir bloquear la celda donde está el gato
-        if (this.gameState && this.gameState.catPosition && q === this.gameState.catPosition.q && r === this.gameState.catPosition.r) {
-            return;
-        }
-        
-        // Validar en frontend que el movimiento esté dentro del tablero
-        const s = -q - r;
-        if (
-            Math.abs(q) >= this.boardSize ||
-            Math.abs(r) >= this.boardSize ||
-            Math.abs(s) >= this.boardSize
-        ) {
-            alert("Movimiento fuera de rango.");
-            return;
-        }
-        
-        try {
-            const apiCall = this.createApiCall(
-                `/api/game/block?gameId=${this.gameId}&q=${q}&r=${r}`, 
-                { method: 'POST' }
-            );
-            
-            const gameState = await apiCall();
-            console.log("Respuesta movimiento:", gameState);
+        HexGameState gameState = optional.get();
 
-            this.gameState = gameState;
-            this.renderBoard(gameState);
-            this.updateStatus(gameState.status);
-            this.updateMovesCount(gameState.movesCount || 0);
-            
-            const gameEndStates = ['PLAYER_LOST', 'PLAYER_WON'];
-            const isGameOver = gameEndStates.some(state => state === gameState.status);
-            
-            if (isGameOver) {
-                this.showGameOver(gameState.status);
-            }
-        } catch (error) {
-            this.handleError('Error al realizar el movimiento', error);
-        }
-    }
-    
-    // Single Responsibility: Update moves count display
-    updateMovesCount(count) {
-        this.movesElement.textContent = count;
-    }
-    
-    // Single Responsibility: Render board only
-    // Modular Programming: Separated concerns for board rendering
-    renderBoard(gameState) {
-        this.board.innerHTML = '';
-        
-        // Configuration object - Modular approach with improved spacing
-        const boardConfig = {
-            hexSize: 25,
-            centerX: 375,
-            centerY: 375,
-            cellWidth: 40,
-            cellHeight: 46
-        };
-        
-        // Functional Programming: Generate all cells (both playable and border)
-        const cells = this.generateCellPositions(boardConfig)
-            .map(cell => this.createHexCell(cell, gameState, boardConfig));
-        
-        cells.forEach(cell => this.board.appendChild(cell));
-    }
-    
-    // Pure Function: Generate cell positions without side effects
-    generateCellPositions(config) {
-        const positions = [];
-        for (let q = -this.boardSize; q <= this.boardSize; q++) {
-            for (let r = -this.boardSize; r <= this.boardSize; r++) {
-                const s = -q - r;
-                if (Math.abs(s) <= this.boardSize) {
-                    const x = config.centerX + config.hexSize * (3/2 * q);
-                    const y = config.centerY + config.hexSize * (Math.sqrt(3)/2 * q + Math.sqrt(3) * r);
-                    const isBorder = Math.abs(q) === this.boardSize || 
-                                   Math.abs(r) === this.boardSize || 
-                                   Math.abs(s) === this.boardSize;
-                    const type = isBorder ? 'border' : 'playable';
-                    positions.push({ q, r, x, y, type });
-                }
-            }
-        }
-        return positions;
-    }
-    
-    // Pure Function: Check if position is valid for playing (not border)
-    isValidHexPosition(q, r) {
-        const s = -q - r;
-        return Math.abs(q) < this.boardSize && Math.abs(r) < this.boardSize && Math.abs(s) < this.boardSize;
-    }
-    
-    // Factory Method Pattern: Create hex cells
-    createHexCell(position, gameState, config) {
-        const cell = document.createElement('div');
-        cell.className = position.type === 'border' ? 'hex-cell border-cell' : 'hex-cell';
-        cell.style.left = `${position.x - config.cellWidth / 2}px`;
-        cell.style.top = `${position.y - config.cellHeight / 2}px`;
-        cell.setAttribute('data-q', position.q);
-        cell.setAttribute('data-r', position.r);
-        cell.setAttribute('data-type', position.type);
-
-        // CAMBIO: Usar catPosition en vez de cat
-        const isCatPosition = gameState.catPosition && position.q === gameState.catPosition.q && position.r === gameState.catPosition.r;
-        // CAMBIO: Manejar blockedCells como array de objetos con q y r
-        const isBlocked = Array.isArray(gameState.blockedCells) && gameState.blockedCells.some(pos => pos.q === position.q && pos.r === position.r);
-
-        if (isCatPosition) {
-            cell.classList.add('cat');
-        } else if (isBlocked) {
-            cell.classList.add('blocked');
-        } else if (position.type === 'playable') {
-            // Solo permite clic en casillas 'playable' que NO sean el gato
-            cell.addEventListener('click', () => this.makeMove(position.q, position.r));
-            cell.classList.add('clickable');
+        if (gameState.getStatus() != GameStatus.IN_PROGRESS) {
+            return Optional.of(gameState);
         }
 
-        if (position.type === 'border') {
-            cell.style.opacity = '0.3';
-            cell.style.pointerEvents = 'none';
+        HexGameBoard board = gameState.getGameBoard();
+        HexPosition cat = gameState.getCatPosition();
+
+        if (cat.equals(position) || board.isBlocked(position)) {
+            return Optional.of(gameState);
         }
 
-        // Opcional: deshabilita pointer events si es el gato
-        if (isCatPosition) {
-            cell.style.pointerEvents = 'none';
+        // Validación de límites del tablero
+        if (!board.isPositionInBounds(position)) {
+            System.out.println("❌ Posición fuera de los límites del tablero.");
+            return Optional.of(gameState);
         }
 
-        return cell;
-    }
-    
-    // Single Responsibility: Update status display only
-    updateStatus(status) {
-        const statusMessages = {
-            'IN_PROGRESS': 'En progreso',
-            'PLAYER_LOST': '¡El gato escapó!',
-            'PLAYER_WON': '¡Atrapaste al gato!'
-        };
-        this.statusElement.textContent = statusMessages[status] || 'Estado desconocido';
-    }
-    
-    // Single Responsibility: Show game over dialog only
-    showGameOver(status) {
-        this.removeGameOverDialogs();
-        const messages = {
-            'PLAYER_LOST': '¡El gato escapó! Mejor suerte la próxima vez.',
-            'PLAYER_WON': '¡Felicidades! ¡Atrapaste al gato!'
-        };
-        const message = messages[status] || 'Juego terminado';
-        const gameOver = this.createGameOverDialog(message, status);
-        document.body.appendChild(gameOver);
-    }
-    
-    // Factory Method: Create game over dialog with improved functionality
-    createGameOverDialog(message, status) {
-        const gameOver = document.createElement('div');
-        gameOver.className = 'game-over';
-        const playerName = this.playerNameInput.value.trim() || 'Anónimo';
-        gameOver.innerHTML = `
-            <h2>${message}</h2>
-            <p>Jugador: ${playerName}</p>
-            <p>Movimientos: ${this.movesElement.textContent}</p>
-            <div>
-                <button onclick="saveScore('${this.gameId}', '${playerName}')">Guardar Puntuación</button>
-                <button onclick="game.closeGameOverDialog()">Cerrar</button>
-                <button onclick="game.startNewGame()">Nuevo Juego</button>
-            </div>
-        `;
-        return gameOver;
-    }
-    
-    closeGameOverDialog() {
-        this.removeGameOverDialogs();
-    }
-    
-    handleError(message, error) {
-        console.error(message, error);
-        let msg = message;
-        if (error && error.message) {
-            msg += "\n" + error.message;
-        }
-        alert(msg);
-    }
-}
+        board.getBlockedPositions().add(position);
 
-// Higher-Order Functions for High Score Management
+        AStarCatMovement movementStrategy = new AStarCatMovement(board);
+        Optional<HexPosition> maybeNextPos = movementStrategy.getNextMove(cat);
 
-const createScoreSaver = (gameId, playerName) => async () => {
-    try {
-        const response = await fetch(`/api/game/save-score?gameId=${gameId}&playerName=${encodeURIComponent(playerName)}`, {
-            method: 'POST',
-            headers: { 'Accept': 'application/json' }
-        });
-        if (response.ok) {
-            alert('¡Puntuación guardada exitosamente!');
-            return await response.json();
+        if (maybeNextPos.isEmpty()) {
+            // El gato no puede moverse: atrapado
+            gameState.setCatPosition(cat); // Fuerza updateGameStatus()
         } else {
-            throw new Error('Error al guardar puntuación');
+            HexPosition nextCat = maybeNextPos.get();
+            gameState.setCatPosition(nextCat);
         }
-    } catch (error) {
-        console.error('Error saving score:', error);
-        alert('Error al guardar la puntuación');
+
+        gameState.setMoveCount(gameState.getMoveCount() + 1);
+        gameRepository.save(gameState);
+
+        return Optional.of(gameState);
     }
-};
 
-async function saveScore(gameId, playerName) {
-    const scoreSaver = createScoreSaver(gameId, playerName);
-    await scoreSaver();
-}
+    @Override
+    public boolean isValidMove(String gameId, HexPosition position) {
+        Optional<HexGameState> optional = getGameState(gameId);
+        if (optional.isEmpty()) return false;
+        HexGameState gameState = optional.get();
+        HexGameBoard board = gameState.getGameBoard();
+        HexPosition cat = gameState.getCatPosition();
 
-const createScoreFetcher = (endpoint) => async () => {
-    try {
-        const response = await fetch(endpoint, {
-            headers: { 'Accept': 'application/json' }
-        });
-        if (!response.ok) {
-            throw new Error(`Error fetching scores: ${response.status}`);
+        if (cat.equals(position)) return false;
+        if (board.isBlocked(position)) return false;
+        int q = position.getQ();
+        int r = position.getR();
+        int s = -q - r;
+        int size = board.getSize();
+        if (Math.abs(q) > size || Math.abs(r) > size || Math.abs(s) > size) return false;
+        return true;
+    }
+
+    @Override
+    public Optional<HexPosition> getSuggestedMove(String gameId) {
+        throw new UnsupportedOperationException("No implementado aún");
+    }
+
+    @Override
+    public Object getGameStatistics(String gameId) {
+        throw new UnsupportedOperationException("No implementado aún");
+    }
+
+    @Override
+    protected HexPosition getTargetPosition(GameState<HexPosition> gameState) {
+        HexGameState hexGameState = (HexGameState) gameState;
+        HexPosition cat = hexGameState.getCatPosition();
+        int size = hexGameState.getBoardSize();
+
+        if (cat.isAtBorder(size)) return cat;
+
+        int q = cat.getQ();
+        int r = cat.getR();
+        int s = -q - r;
+
+        int qDist = size - Math.abs(q);
+        int rDist = size - Math.abs(r);
+        int sDist = size - Math.abs(s);
+
+        if (qDist <= rDist && qDist <= sDist) {
+            return new HexPosition(q > 0 ? size : -size, r);
+        } else if (rDist <= qDist && rDist <= sDist) {
+            return new HexPosition(q, r > 0 ? size : -size);
+        } else {
+            return new HexPosition(q, -q - (s > 0 ? size : -size));
         }
-        return await response.json();
-    } catch (error) {
-        console.error('Error fetching scores:', error);
-        return [];
     }
-};
 
-const scoreDisplayFunctions = {
-    top: createScoreFetcher('/api/game/high-scores?limit=10'),
-    winning: createScoreFetcher('/api/game/winning-scores'),
-    recent: createScoreFetcher('/api/game/high-scores?limit=20')
-};
-
-const formatScore = (score) => {
-    const winIcon = score.playerWon ? '🏆' : '❌';
-    const calculatedScore = score.playerWon ? 
-        (1000 - score.movesCount * 10 + score.boardSize * 50 + Math.max(0, 300 - score.gameDurationSeconds)) : 
-        (100 - score.movesCount * 10);
-    
-    return {
-        playerName: score.playerName,
-        details: `${winIcon} ${score.movesCount} movimientos - Tablero ${score.boardSize}x${score.boardSize}`,
-        score: Math.max(0, calculatedScore)
-    };
-};
-
-const createScoreRenderer = (containerId) => (scores) => {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    const scoreElements = scores
-        .map(formatScore)
-        .map(formattedScore => `
-            <li>
-                <div class="score-info">
-                    <div class="player-name">${formattedScore.playerName}</div>
-                    <div class="game-details">${formattedScore.details}</div>
-                </div>
-                <div class="score-value">${formattedScore.score}</div>
-            </li>
-        `);
-    container.innerHTML = scoreElements.join('');
-};
-
-async function showHighScores() {
-    const section = document.getElementById('high-score-section');
-    section.style.display = 'block';
-    await showScoreTab('top');
-}
-
-function hideHighScores() {
-    const section = document.getElementById('high-score-section');
-    section.style.display = 'none';
-}
-
-async function showScoreTab(tabType) {
-    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-    event?.target?.classList.add('active') || 
-        document.querySelector(`[onclick="showScoreTab('${tabType}')"]`)?.classList.add('active');
-    const scoreFetcher = scoreDisplayFunctions[tabType];
-    const scoreRenderer = createScoreRenderer('score-list');
-    if (scoreFetcher) {
-        const scores = await scoreFetcher();
-        scoreRenderer(scores);
+    @Override
+    protected void initializeGame(GameState<HexPosition> gameState, GameBoard<HexPosition> board) {
+        // Lógica de inicialización opcional
     }
+
+    // Otros métodos sin implementar...
 }
-
-const initializeGame = () => {
-    window.game = new Game();
-    return window.game;
-};
-
-window.addEventListener('load', initializeGame);
