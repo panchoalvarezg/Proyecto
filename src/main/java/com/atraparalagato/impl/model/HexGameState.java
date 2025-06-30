@@ -1,6 +1,7 @@
 package com.atraparalagato.impl.model;
 
 import com.atraparalagato.base.model.GameState;
+import com.atraparalagato.base.model.GameState.GameStatus;
 import com.atraparalagato.impl.strategy.AStarCatMovement;
 
 import java.util.LinkedHashSet;
@@ -14,16 +15,13 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * Implementación esqueleto de GameState para tableros hexagonales.
+ * Implementación de GameState para tableros hexagonales.
  * 
- * Los estudiantes deben completar los métodos marcados con TODO.
- * 
- * Conceptos a implementar:
- * - Estado del juego más sofisticado que ExampleGameState
- * - Sistema de puntuación avanzado
- * - Lógica de victoria/derrota más compleja
- * - Serialización eficiente
- * - Manejo de eventos y callbacks
+ * Incluye mejoras:
+ * - Método público updateStatus para poder establecer el estado desde el servicio.
+ * - Validación de dificultad nula/incorrecta.
+ * - Mejor manejo de serialización y restauración.
+ * - Documentación mejorada.
  */
 public class HexGameState extends GameState<HexPosition> {
 	
@@ -43,6 +41,14 @@ public class HexGameState extends GameState<HexPosition> {
 		this.boardSize = boardSize;
 		this.catPosition = new HexPosition(0, 0);
 		this.gameBoard = new HexGameBoard(boardSize);
+		this.difficulty = Difficulties.EASY; // Valor por defecto
+	}
+
+	/**
+	 * Permite actualizar el status desde fuera de la clase (workaround protected setStatus).
+	 */
+	public void updateStatus(GameStatus status) {
+		super.setStatus(status);
 	}
 	
 	@Override
@@ -69,9 +75,9 @@ public class HexGameState extends GameState<HexPosition> {
 	@Override
 	protected void updateGameStatus() {
 		if (isCatAtBorder()) {
-			setStatus(GameStatus.PLAYER_LOST);
+			updateStatus(GameStatus.PLAYER_LOST);
 		} else if (isCatTrapped()) {
-			setStatus(GameStatus.PLAYER_WON);
+			updateStatus(GameStatus.PLAYER_WON);
 		}
 	}
 	
@@ -120,8 +126,8 @@ public class HexGameState extends GameState<HexPosition> {
 		
 		JSON_Object.put("moveCount", getMoveCount());
 		JSON_Object.put("boardSize", boardSize);
+		JSON_Object.put("difficulty", difficulty != null ? difficulty.name() : null);
 		// JSON_Object.put("score", [getScore()]);
-		// JSON_Object.put("difficulty", [getDifficulty()]);
 		// JSON_Object.put("elapsedTime", [getTimeElapsed()]);
 		
 		return JSON_Object; // <-- ¡Nunca retornes JSON_Object.toString() aquí!
@@ -133,7 +139,7 @@ public class HexGameState extends GameState<HexPosition> {
 			try {
 				JSONObject JSONState = (JSONObject) serializedState;
 
-				setStatus(GameStatus.valueOf(JSONState.getString("status")));
+				updateStatus(GameStatus.valueOf(JSONState.getString("status")));
 
 				JSONArray newCatPositionArray = JSONState.getJSONArray("catPosition");
 				catPosition = new HexPosition(newCatPositionArray.getInt(0), newCatPositionArray.getInt(1));
@@ -151,6 +157,9 @@ public class HexGameState extends GameState<HexPosition> {
 
 				setMoveCount(JSONState.getInt("moveCount"));
 				setBoardSize(JSONState.getInt("boardSize"));
+				if (JSONState.has("difficulty") && JSONState.get("difficulty") != null) {
+					setDifficulty(JSONState.getString("difficulty"));
+				}
 			} catch (JSONException error) {
 				error.printStackTrace();
 				throw new RuntimeException("Error al deserializar estado del juego desde JSON", error);
@@ -185,6 +194,18 @@ public class HexGameState extends GameState<HexPosition> {
 	}
 	
 	public void setDifficulty(String newDifficulty) {
-		difficulty = Difficulties.valueOf(newDifficulty);
+		if (newDifficulty == null) {
+			this.difficulty = Difficulties.EASY;
+			return;
+		}
+		try {
+			difficulty = Difficulties.valueOf(newDifficulty.toUpperCase());
+		} catch (IllegalArgumentException ex) {
+			difficulty = Difficulties.EASY;
+		}
+	}
+	
+	public String getDifficulty() {
+		return difficulty != null ? difficulty.name() : null;
 	}
 }
