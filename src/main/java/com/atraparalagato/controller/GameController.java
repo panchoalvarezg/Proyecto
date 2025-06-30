@@ -55,24 +55,29 @@ public class GameController {
     /**
      * Ejecuta un movimiento del jugador.
      */
-    @PostMapping("/block")
-    public ResponseEntity<Map<String, Object>> blockPosition(
-            @RequestParam String gameId,
-            @RequestParam int q,
-            @RequestParam int r) {
-        try {
-            HexPosition position = new HexPosition(q, r);
-            
-            if (useExampleImplementation) {
-                return blockPositionWithExample(gameId, position);
-            } else {
-                return blockPositionWithStudentImplementation(gameId, position);
-            }
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                    .body(Map.of("error", "Error al ejecutar movimiento: " + e.getMessage()));
+@PostMapping("/block")
+public ResponseEntity<Map<String, Object>> blockPosition(
+        @RequestParam String gameId,
+        @RequestParam int q,
+        @RequestParam int r) {
+    try {
+        HexPosition position = new HexPosition(q, r);
+
+        if (useExampleImplementation) {
+            return blockPositionWithExample(gameId, position);
+        } else {
+            return blockPositionWithStudentImplementation(gameId, position);
         }
+    } catch (IllegalArgumentException e) {
+        // Errores de validación de movimiento (posición inválida, ya bloqueada, es borde, etc.)
+        return ResponseEntity.badRequest()
+                .body(Map.of("error", e.getMessage()));
+    } catch (Exception e) {
+        // Para errores inesperados realmente internos
+        return ResponseEntity.internalServerError()
+                .body(Map.of("error", "Error interno al ejecutar movimiento: " + e.getMessage()));
     }
+}
     
     /**
      * Obtiene el estado actual del juego.
