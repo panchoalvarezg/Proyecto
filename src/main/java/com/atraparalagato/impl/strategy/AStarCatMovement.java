@@ -12,16 +12,10 @@ public class AStarCatMovement {
         this.board = board;
     }
 
-    /**
-     * Retorna true si hay un camino desde la posición actual del gato hasta algún borde.
-     */
     public boolean hasPathToGoal(HexPosition catPos) {
         return getNextMove(catPos).isPresent();
     }
 
-    /**
-     * Devuelve la próxima posición óptima para el gato, o vacío si está atrapado.
-     */
     public Optional<HexPosition> getNextMove(HexPosition catPos) {
         Set<HexPosition> visited = new HashSet<>();
         Queue<List<HexPosition>> queue = new LinkedList<>();
@@ -32,7 +26,6 @@ public class AStarCatMovement {
             HexPosition current = path.get(path.size() - 1);
 
             if (current.isAtBorder(board.getSize()) && !current.equals(catPos)) {
-                // Devuelve el primer paso del camino (no el actual)
                 return Optional.of(path.get(1));
             }
             for (HexPosition n : getNeighbors(current)) {
@@ -47,9 +40,6 @@ public class AStarCatMovement {
         return Optional.empty();
     }
 
-    /**
-     * Devuelve las 6 posiciones vecinas de un hexágono adyacente en el tablero.
-     */
     private List<HexPosition> getNeighbors(HexPosition pos) {
         int[][] deltas = {{1, 0}, {0, 1}, {-1, 1}, {-1, 0}, {0, -1}, {1, -1}};
         List<HexPosition> neighbors = new ArrayList<>();
