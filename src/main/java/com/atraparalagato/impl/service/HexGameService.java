@@ -27,8 +27,30 @@ public class HexGameService extends com.atraparalagato.base.service.GameService<
     public HexGameState createGame(int boardSize, String difficulty, Map<String, Object> options) {
         if (boardSize <= 2) boardSize = 3;
         String gameId = UUID.randomUUID().toString();
+
+        // Colocar al gato en una celda aleatoria que NO sea de borde ni esté fuera del tablero
+        Random rand = new Random();
+        int q, r, s;
+        do {
+            q = rand.nextInt(boardSize * 2 - 1) - (boardSize - 1);
+            r = rand.nextInt(boardSize * 2 - 1) - (boardSize - 1);
+            s = -q - r;
+        } while (
+            Math.abs(q) >= boardSize ||
+            Math.abs(r) >= boardSize ||
+            Math.abs(s) >= boardSize ||
+            Math.abs(q) == boardSize - 1 ||
+            Math.abs(r) == boardSize - 1 ||
+            Math.abs(s) == boardSize - 1
+        );
+        HexPosition catPosition = new HexPosition(q, r);
+
         HexGameState gameState = new HexGameState(gameId, boardSize);
+        gameState.setCatPosition(catPosition);
         gameState.setDifficulty(difficulty);
+        gameState.setStatus(GameStatus.IN_PROGRESS); // Asegura que el juego inicia en progreso
+        gameState.setMoveCount(0);
+
         gameRepository.save(gameState);
         return gameState;
     }
