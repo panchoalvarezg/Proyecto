@@ -1,34 +1,29 @@
 package com.atraparalagato.impl.model;
 
+import com.atraparalagato.base.model.GameBoard;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-public class HexGameBoard {
-    private int size;
-    private LinkedHashSet<HexPosition> blockedPositions;
+/**
+ * Implementación de GameBoard para tableros hexagonales usando HexPosition.
+ */
+public class HexGameBoard extends GameBoard<HexPosition> {
 
     public HexGameBoard(int size) {
-        this.size = size;
-        this.blockedPositions = new LinkedHashSet<>();
+        super(size);
     }
 
-    public int getSize() {
-        return size;
+    @Override
+    protected Set<HexPosition> initializeBlockedPositions() {
+        return new LinkedHashSet<>();
     }
 
-    public Set<HexPosition> getBlockedPositions() {
-        return blockedPositions;
-    }
-
-    public void setBlockedPositions(Set<HexPosition> blockedPositions) {
-        this.blockedPositions.clear();
-        this.blockedPositions.addAll(blockedPositions);
-    }
-
+    @Override
     public boolean isBlocked(HexPosition position) {
         return blockedPositions.contains(position);
     }
 
+    @Override
     public boolean isPositionInBounds(HexPosition position) {
         int q = position.getQ();
         int r = position.getR();
@@ -36,6 +31,7 @@ public class HexGameBoard {
         return Math.abs(q) < size && Math.abs(r) < size && Math.abs(s) < size;
     }
 
+    @Override
     public boolean isValidMove(HexPosition position) {
         if (!isPositionInBounds(position)) {
             throw new IllegalArgumentException("Posición fuera de los límites del tablero.");
@@ -46,11 +42,13 @@ public class HexGameBoard {
         return true;
     }
 
-    public boolean makeMove(HexPosition position) {
-        if (isValidMove(position)) {
-            blockedPositions.add(position);
-            return true;
-        }
-        return false;
+    @Override
+    protected void executeMove(HexPosition position) {
+        blockedPositions.add(position);
+    }
+
+    public void setBlockedPositions(Set<HexPosition> blockedPositions) {
+        this.blockedPositions.clear();
+        this.blockedPositions.addAll(blockedPositions);
     }
 }
