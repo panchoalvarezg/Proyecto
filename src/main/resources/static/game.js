@@ -178,10 +178,18 @@ class Game {
     }
     
     // Pure Function: Check if position is valid for playing (not border)
-    isValidHexPosition(q, r) {
-        const s = -q - r;
-        return Math.abs(q) < this.boardSize && Math.abs(r) < this.boardSize && Math.abs(s) < this.boardSize;
-    }
+function isValidCell(q, r, boardSize) {
+    // Ejemplo para un tablero hexagonal plano de tamaño N centrado en (0,0)
+    // El rango válido es: -center <= q <= center, -center <= r <= center, -center <= s <= center, con q + r + s = 0
+    // Para un tablero con esquina superior izquierda (0,0) se suele usar:
+    return (
+        q >= 0 &&
+        r >= 0 &&
+        q < boardSize &&
+        r < boardSize &&
+        (q + r) < boardSize
+    );
+}
     
     // Factory Method Pattern: Create hex cells
     createHexCell(position, gameState, config) {
