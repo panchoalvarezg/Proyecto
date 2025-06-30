@@ -118,6 +118,7 @@ class Game {
         };
 
         const cells = this.generateCellPositions(boardConfig)
+            .filter(cell => cell.type === 'playable' ? Game.isValidCell(cell.q, cell.r, this.boardSize) : true)
             .map(cell => this.createHexCell(cell, gameState, boardConfig));
 
         cells.forEach(cell => this.board.appendChild(cell));
@@ -326,8 +327,12 @@ function hideHighScores() {
 
 async function showScoreTab(tabType) {
     document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-    event?.target?.classList.add('active') ||
-        document.querySelector(`[onclick="showScoreTab('${tabType}')"]`)?.classList.add('active');
+    if (event?.target) {
+        event.target.classList.add('active');
+    } else {
+        const btn = document.querySelector(`[onclick="showScoreTab('${tabType}')"]`);
+        if (btn) btn.classList.add('active');
+    }
     const scoreFetcher = scoreDisplayFunctions[tabType];
     const scoreRenderer = createScoreRenderer('score-list');
     if (scoreFetcher) {
