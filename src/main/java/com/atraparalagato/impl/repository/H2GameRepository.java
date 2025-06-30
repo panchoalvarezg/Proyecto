@@ -41,7 +41,7 @@ public class H2GameRepository extends DataRepository<GameState<HexPosition>, Str
         String query = """
             CREATE TABLE IF NOT EXISTS Games (
             gameId VARCHAR(255) PRIMARY KEY NOT NULL,
-            data JSON NOT NULL
+            data VARCHAR(4096) NOT NULL
             )
             """;
         try {
@@ -59,33 +59,39 @@ public class H2GameRepository extends DataRepository<GameState<HexPosition>, Str
             throw new IllegalArgumentException("Estado no es HexGameState");
         }
 
-        String selectQuery = """
-            SELECT COUNT(gameId) FROM Games
-            WHERE gameId = '""" + hexState.getGameId() + "';";
+        String selectQuery = "SELECT COUNT(gameId) FROM Games WHERE gameId = ?";
 
         try {
-            Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery(selectQuery);
+            PreparedStatement selectStmt = connection.prepareStatement(selectQuery);
+            selectStmt.setString(1, hexState.getGameId());
+            ResultSet resultSet = selectStmt.executeQuery();
 
+            // Nos aseguramos que serializableState retorna un JSONObject
             JSONObject serializedEntity = (JSONObject) hexState.getSerializableState();
+            String jsonString = serializedEntity.toString();
 
             beforeSave(entity);
 
             if (resultSet.next() && resultSet.getInt(1) != 0) {
-                String updateQuery = """
-                    UPDATE Games
-                    SET data = '""" + serializedEntity.toString() + "'" + """
-                    WHERE gameId = '""" + hexState.getGameId() + "';";
-                statement.executeUpdate(updateQuery);
+                String updateQuery = "UPDATE Games SET data = ? WHERE gameId = ?";
+                PreparedStatement updateStmt = connection.prepareStatement(updateQuery);
+                updateStmt.setString(1, jsonString);
+                updateStmt.setString(2, hexState.getGameId());
+                updateStmt.executeUpdate();
+                updateStmt.close();
             } else {
-                String insertQuery = """
-                    INSERT INTO Games (gameId, data)
-                    VALUES
-                    ('""" + hexState.getGameId() + "', '" + serializedEntity.toString() + "');";
-                statement.executeUpdate(insertQuery);
+                String insertQuery = "INSERT INTO Games (gameId, data) VALUES (?, ?)";
+                PreparedStatement insertStmt = connection.prepareStatement(insertQuery);
+                insertStmt.setString(1, hexState.getGameId());
+                insertStmt.setString(2, jsonString);
+                insertStmt.executeUpdate();
+                insertStmt.close();
             }
 
             afterSave(entity);
+
+            selectStmt.close();
+            resultSet.close();
 
             return hexState;
         } catch (SQLException e) {
@@ -98,19 +104,20 @@ public class H2GameRepository extends DataRepository<GameState<HexPosition>, Str
     public Optional<GameState<HexPosition>> findById(String id) {
         if (id == null) return Optional.empty();
 
-        String query = """
-            SELECT data FROM Games
-            WHERE gameId = '""" + id + "'" + """
-            LIMIT 1;
-            """;
+        String query = "SELECT data FROM Games WHERE gameId = ? LIMIT 1";
         try {
-            Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery(query);
+            PreparedStatement stmt = connection.prepareStatement(query);
+            stmt.setString(1, id);
+            ResultSet resultSet = stmt.executeQuery();
 
             if (resultSet.next()) {
                 String dataJSONString = resultSet.getString(1);
+                stmt.close();
+                resultSet.close();
                 return Optional.of(deserializeGameState(dataJSONString, id));
             } else {
+                stmt.close();
+                resultSet.close();
                 return Optional.empty();
             }
         } catch (SQLException | JSONException e) {
