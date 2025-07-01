@@ -1,50 +1,77 @@
 // HexGameState.java
 package com.atraparalagato.impl.model;
 
-import com.atraparalagato.base.model.GameBoard;
 import com.atraparalagato.base.model.GameState;
 
 public class HexGameState extends GameState<HexPosition> {
+    private final HexGameBoard board;
     private HexPosition catPosition;
-    private GameBoard<HexPosition> gameBoard;
-    private int moveCount;
-    private final int boardSize;
 
-    public HexGameState(String gameId, int size) {
+    public HexGameState(String gameId, int boardSize, HexPosition initialCatPosition) {
         super(gameId);
-        this.boardSize = size;
-        this.gameBoard = new HexGameBoard(size);
-        this.catPosition = new HexPosition(0, 0);
-        this.moveCount = 0;
-        this.setStatus(GameStatus.IN_PROGRESS);
+        this.board = new HexGameBoard(boardSize);
+        this.catPosition = initialCatPosition;
     }
 
+    @Override
+    protected boolean canExecuteMove(HexPosition position) {
+        return board.isValidMove(position);
+    }
+
+    @Override
+    protected boolean performMove(HexPosition position) {
+        boolean moved = board.makeMove(position);
+        if (moved) catPosition = position;
+        return moved;
+    }
+
+    @Override
+    protected void updateGameStatus() {
+        if (catPosition.isWithinBounds(1)) {
+            setStatus(GameStatus.PLAYER_LOST);
+        } else if (board.getAdjacentPositions(catPosition).stream().allMatch(board::isBlocked)) {
+            setStatus(GameStatus.PLAYER_WON);
+        }
+    }
+
+    @Override
     public HexPosition getCatPosition() {
         return catPosition;
     }
 
-    public void setCatPosition(HexPosition newPos) {
-        this.catPosition = newPos;
-        if (newPos.isAtBorder(boardSize)) {
-            this.setStatus(GameStatus.CAT_ESCAPED);
-        } else if (gameBoard.getBlockedPositions().contains(newPos)) {
-            this.setStatus(GameStatus.CAT_CAUGHT);
+    @Override
+    public void setCatPosition(HexPosition position) {
+        this.catPosition = position;
+    }
+
+    @Override
+    public boolean isGameFinished() {
+        return status != GameStatus.IN_PROGRESS;
+    }
+
+    @Override
+    public boolean hasPlayerWon() {
+        return status == GameStatus.PLAYER_WON;
+    }
+
+    @Override
+    public int calculateScore() {
+        return 100 - getMoveCount();
+    }
+
+    @Override
+    public Object getSerializableState() {
+        return new Object[]{catPosition.getQ(), catPosition.getR(), status.name(), moveCount};
+    }
+
+    @Override
+    public void restoreFromSerializable(Object serializedState) {
+        if (serializedState instanceof Object[] data && data.length == 4) {
+            int q = (Integer) data[0];
+            int r = (Integer) data[1];
+            catPosition = new HexPosition(q, r);
+            status = GameStatus.valueOf((String) data[2]);
+            moveCount = (Integer) data[3];
         }
-    }
-
-    public GameBoard<HexPosition> getGameBoard() {
-        return gameBoard;
-    }
-
-    public int getMoveCount() {
-        return moveCount;
-    }
-
-    public void setMoveCount(int count) {
-        this.moveCount = count;
-    }
-
-    public int getBoardSize() {
-        return boardSize;
     }
 }
