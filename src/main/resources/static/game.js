@@ -1,3 +1,5 @@
+// game.js
+
 class Game {
     constructor() {
         this.gameId = null;
@@ -7,7 +9,6 @@ class Game {
         this.movesElement = document.getElementById('moves-count');
         this.startButton = document.getElementById('start-game');
         this.playerNameInput = document.getElementById('player-name');
-        this.gameState = null;
         this.initializeEventListeners();
     }
 
@@ -22,10 +23,6 @@ class Game {
                     headers: { 'Accept': 'application/json' },
                     ...options
                 });
-                if (!response.ok) {
-                    const text = await response.text();
-                    throw new Error(`API Error: ${response.status} - ${text}`);
-                }
                 return await response.json();
             } catch (error) {
                 console.error('API Error:', error);
@@ -37,20 +34,11 @@ class Game {
     async startNewGame() {
         try {
             this.removeGameOverDialogs();
-            console.log("Iniciando nuevo juego...");
-            const apiCall = this.createApiCall(`/api/game/start?boardSize=${this.boardSize}`, { method: 'GET' });
+            const apiCall = this.createApiCall(`/api/game/start?boardSize=${this.boardSize}`, {
+                method: 'GET'
+            });
             const gameState = await apiCall();
-            console.log("Respuesta backend:", gameState);
-
-            if (!gameState || !gameState.gameId || !gameState.catPosition || typeof gameState.movesCount === "undefined" || !gameState.status) {
-                throw new Error('Respuesta inesperada del backend');
-            }
-
             this.gameId = gameState.gameId;
-            this.gameState = gameState;
-            if (gameState.boardSize) {
-                this.boardSize = gameState.boardSize;
-            }
             this.renderBoard(gameState);
             this.updateStatus(gameState.status);
             this.updateMovesCount(gameState.movesCount || 0);
@@ -66,41 +54,43 @@ class Game {
 
     async makeMove(q, r) {
         if (!this.gameId) return;
-
-        // No permitir bloquear la celda donde está el gato
-        if (this.gameState && this.gameState.catPosition && q === this.gameState.catPosition.q && r === this.gameState.catPosition.r) {
-            return;
-        }
-
-        // Validar en frontend que el movimiento esté dentro del tablero
-        if (!Game.isValidCell(q, r, this.boardSize)) {
-            alert("Movimiento fuera de rango.");
-            return;
-        }
-
         try {
             const apiCall = this.createApiCall(
                 `/api/game/block?gameId=${this.gameId}&q=${q}&r=${r}`,
                 { method: 'POST' }
             );
-
             const gameState = await apiCall();
-            console.log("Respuesta movimiento:", gameState);
-
-            this.gameState = gameState;
             this.renderBoard(gameState);
             this.updateStatus(gameState.status);
             this.updateMovesCount(gameState.movesCount || 0);
 
-            const gameEndStates = ['PLAYER_LOST', 'PLAYER_WON'];
-            const isGameOver = gameEndStates.some(state => state === gameState.status);
+            // NUEVO: Si el gato está en el borde, el jugador pierde
+            if (this.isCatAtBorder(gameState.catPosition)) {
+                this.updateStatus('PLAYER_LOST');
+                this.showGameOver('PLAYER_LOST');
+                return;
+            }
 
+            // También mostramos el game over si el backend ya lo indicó
+            const gameEndStates = ['PLAYER_LOST', 'PLAYER_WON'];
+            const isGameOver = gameEndStates.includes(gameState.status);
             if (isGameOver) {
                 this.showGameOver(gameState.status);
             }
         } catch (error) {
             this.handleError('Error al realizar el movimiento', error);
         }
+    }
+
+    // NUEVO: Determina si el gato está en el borde jugable (radio visual)
+    isCatAtBorder(catPosition) {
+        if (!catPosition) return false;
+        const q = catPosition.q;
+        const r = catPosition.r;
+        const s = -q - r;
+        const radius = this.boardSize - 1;
+        const max = Math.max(Math.abs(q), Math.abs(r), Math.abs(s));
+        return max === radius;
     }
 
     updateMovesCount(count) {
@@ -116,24 +106,21 @@ class Game {
             cellWidth: 40,
             cellHeight: 46
         };
-
         const cells = this.generateCellPositions(boardConfig)
             .map(cell => this.createHexCell(cell, gameState, boardConfig));
-
         cells.forEach(cell => this.board.appendChild(cell));
     }
 
     generateCellPositions(config) {
         const positions = [];
-        for (let q = -this.boardSize; q <= this.boardSize; q++) {
-            for (let r = -this.boardSize; r <= this.boardSize; r++) {
+        const radius = this.boardSize - 1;
+        for (let q = -radius; q <= radius; q++) {
+            for (let r = -radius; r <= radius; r++) {
                 const s = -q - r;
-                if (Math.abs(s) <= this.boardSize) {
+                if (Math.max(Math.abs(q), Math.abs(r), Math.abs(s)) <= radius) {
                     const x = config.centerX + config.hexSize * (3/2 * q);
                     const y = config.centerY + config.hexSize * (Math.sqrt(3)/2 * q + Math.sqrt(3) * r);
-                    const isBorder = Math.abs(q) === this.boardSize ||
-                                     Math.abs(r) === this.boardSize ||
-                                     Math.abs(s) === this.boardSize;
+                    const isBorder = Math.max(Math.abs(q), Math.abs(r), Math.abs(s)) === radius;
                     const type = isBorder ? 'border' : 'playable';
                     positions.push({ q, r, x, y, type });
                 }
@@ -142,53 +129,44 @@ class Game {
         return positions;
     }
 
-    // Función revisada y correcta para validez de celdas hexagonales
-    static isValidCell(q, r, boardSize) {
-        const s = -q - r;
-        // Solo son válidas las celdas dentro del hexágono principal, no en el borde
-        return (
-            Math.abs(q) < boardSize &&
-            Math.abs(r) < boardSize &&
-            Math.abs(s) < boardSize
-        );
-    }
-
     createHexCell(position, gameState, config) {
         const cell = document.createElement('div');
-        cell.className = position.type === 'border' ? 'hex-cell border-cell' : 'hex-cell';
-        cell.style.left = `${position.x - config.cellWidth / 2}px`;
-        cell.style.top = `${position.y - config.cellHeight / 2}px`;
+        if (position.type === 'border') {
+            cell.className = 'hex-cell border-cell';
+            cell.style.opacity = '0.3';
+        } else {
+            cell.className = 'hex-cell';
+        }
+        cell.style.left = `${position.x - config.cellWidth/2}px`;
+        cell.style.top = `${position.y - config.cellHeight/2}px`;
         cell.setAttribute('data-q', position.q);
         cell.setAttribute('data-r', position.r);
         cell.setAttribute('data-type', position.type);
 
-        const isCatPosition = gameState.catPosition && position.q === gameState.catPosition.q && position.r === gameState.catPosition.r;
-        const isBlocked = Array.isArray(gameState.blockedCells) && gameState.blockedCells.some(pos => pos.q === position.q && pos.r === position.r);
+        const isCatPosition = this.isCatAt(position.q, position.r, gameState);
+        const isBlocked = this.isCellBlocked(position.q, position.r, gameState);
 
         if (isCatPosition) {
             cell.classList.add('cat');
         } else if (isBlocked) {
             cell.classList.add('blocked');
-        } else if (
-            position.type === 'playable' &&
-            Game.isValidCell(position.q, position.r, this.boardSize) &&
-            gameState.status === 'IN_PROGRESS' &&
-            !(gameState.catPosition && position.q === gameState.catPosition.q && position.r === gameState.catPosition.r)
-        ) {
-            cell.addEventListener('click', () => this.makeMove(position.q, position.r));
-            cell.classList.add('clickable');
+        } else {
+            const moveHandler = this.createMoveHandler(position.q, position.r);
+            cell.addEventListener('click', moveHandler);
         }
-
-        if (position.type === 'border' || !Game.isValidCell(position.q, position.r, this.boardSize)) {
-            cell.style.opacity = '0.3';
-            cell.style.pointerEvents = 'none';
-        }
-
-        if (isCatPosition) {
-            cell.style.pointerEvents = 'none';
-        }
-
         return cell;
+    }
+
+    createMoveHandler(q, r) {
+        return () => this.makeMove(q, r);
+    }
+
+    isCatAt(q, r, gameState) {
+        return q === gameState.catPosition.q && r === gameState.catPosition.r;
+    }
+
+    isCellBlocked(q, r, gameState) {
+        return gameState.blockedCells.some(pos => pos.q === q && pos.r === r);
     }
 
     updateStatus(status) {
@@ -234,15 +212,11 @@ class Game {
 
     handleError(message, error) {
         console.error(message, error);
-        let msg = message;
-        if (error && error.message) {
-            msg += "\n" + error.message;
-        }
-        alert(msg);
+        alert(message);
     }
 }
 
-// High Score Management y exportación global
+// Score logic (igual que antes)
 const createScoreSaver = (gameId, playerName) => async () => {
     try {
         const response = await fetch(`/api/game/save-score?gameId=${gameId}&playerName=${encodeURIComponent(playerName)}`, {
@@ -271,9 +245,6 @@ const createScoreFetcher = (endpoint) => async () => {
         const response = await fetch(endpoint, {
             headers: { 'Accept': 'application/json' }
         });
-        if (!response.ok) {
-            throw new Error(`Error fetching scores: ${response.status}`);
-        }
         return await response.json();
     } catch (error) {
         console.error('Error fetching scores:', error);
@@ -292,7 +263,6 @@ const formatScore = (score) => {
     const calculatedScore = score.playerWon ?
         (1000 - score.movesCount * 10 + score.boardSize * 50 + Math.max(0, 300 - score.gameDurationSeconds)) :
         (100 - score.movesCount * 10);
-
     return {
         playerName: score.playerName,
         details: `${winIcon} ${score.movesCount} movimientos - Tablero ${score.boardSize}x${score.boardSize}`,
@@ -330,12 +300,8 @@ function hideHighScores() {
 
 async function showScoreTab(tabType) {
     document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-    if (event?.target) {
-        event.target.classList.add('active');
-    } else {
-        const btn = document.querySelector(`[onclick="showScoreTab('${tabType}')"]`);
-        if (btn) btn.classList.add('active');
-    }
+    event?.target?.classList.add('active') ||
+        document.querySelector(`[onclick="showScoreTab('${tabType}')"]`)?.classList.add('active');
     const scoreFetcher = scoreDisplayFunctions[tabType];
     const scoreRenderer = createScoreRenderer('score-list');
     if (scoreFetcher) {
@@ -343,12 +309,6 @@ async function showScoreTab(tabType) {
         scoreRenderer(scores);
     }
 }
-
-// Export functions to global scope for HTML onclick handlers
-window.showHighScores = showHighScores;
-window.hideHighScores = hideHighScores;
-window.showScoreTab = showScoreTab;
-window.saveScore = saveScore;
 
 const initializeGame = () => {
     window.game = new Game();
