@@ -42,8 +42,13 @@
             </ul>
             <button onclick="hideHighScores()">Cerrar</button>
         </div>
+
+        <!-- Botón global para guardar puntuación -->
+        <div style="margin-top: 20px;">
+            <button onclick="game.saveScore(game.gameId, document.getElementById('player-name').value)">Guardar Puntuación</button>
+        </div>
     </div>
     
     <script src="game.js"></script>
 </body>
-</html> 
+</html>
