@@ -15,8 +15,10 @@ public class GameService {
         this.gameScoreRepository = gameScoreRepository;
     }
 
-    public void saveScore(String playerName, Integer score) {
+    // Ahora recibe el gameId y lo guarda
+    public void saveScore(String gameId, String playerName, Integer score) {
         GameScore gameScore = new GameScore();
+        gameScore.setGameId(gameId);
         gameScore.setPlayerName(playerName);
         gameScore.setScore(score);
         gameScoreRepository.save(gameScore);
