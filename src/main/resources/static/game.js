@@ -1,5 +1,3 @@
-// game.js
-
 class Game {
     constructor() {
         this.gameId = null;
@@ -218,8 +216,10 @@ class Game {
 
 // Score logic (igual que antes)
 const createScoreSaver = (gameId, playerName) => async () => {
+    // Calcula el puntaje actual según tu lógica de juego
+    const score = calcularPuntajeActual();
     try {
-        const response = await fetch(`/api/game/save-score?gameId=${gameId}&playerName=${encodeURIComponent(playerName)}`, {
+        const response = await fetch(`/api/game/save-score?playerName=${encodeURIComponent(playerName)}&score=${score}`, {
             method: 'POST',
             headers: { 'Accept': 'application/json' }
         });
@@ -238,6 +238,16 @@ const createScoreSaver = (gameId, playerName) => async () => {
 async function saveScore(gameId, playerName) {
     const scoreSaver = createScoreSaver(gameId, playerName);
     await scoreSaver();
+}
+
+/**
+ * Ejemplo de función para calcular el puntaje actual.
+ * Debes reemplazarla por la lógica real de tu juego.
+ * @returns {number}
+ */
+function calcularPuntajeActual() {
+    // TODO: Reemplaza con el cálculo real del puntaje del juego
+    return Math.floor(Math.random() * 1000);
 }
 
 const createScoreFetcher = (endpoint) => async () => {
