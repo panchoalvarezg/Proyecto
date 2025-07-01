@@ -1,7 +1,7 @@
-// HexPosition.java
 package com.atraparalagato.impl.model;
 
 import com.atraparalagato.base.model.Position;
+
 import java.util.Objects;
 
 public class HexPosition implements Position {
@@ -13,9 +13,13 @@ public class HexPosition implements Position {
         this.r = r;
     }
 
-    public int getQ() { return q; }
-    public int getR() { return r; }
-    public int getS() { return -q - r; }
+    public int getQ() {
+        return q;
+    }
+
+    public int getR() {
+        return r;
+    }
 
     @Override
     public boolean equals(Object o) {
@@ -32,11 +36,12 @@ public class HexPosition implements Position {
 
     @Override
     public String toString() {
-        return String.format("HexPosition(q=%d,r=%d)", q, r);
+        return "HexPosition(" + q + "," + r + ")";
     }
 
-    public boolean isAtBorder(int size) {
-        int s = getS();
-        return Math.abs(q) == size || Math.abs(r) == size || Math.abs(s) == size;
+    public double distanceTo(HexPosition other) {
+        return (Math.abs(q - other.q)
+                + Math.abs(q + r - other.q - other.r)
+                + Math.abs(r - other.r)) / 2.0;
     }
 }
