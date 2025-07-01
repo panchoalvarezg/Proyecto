@@ -5,6 +5,7 @@ import com.atraparalagato.impl.model.HexGameBoard;
 import com.atraparalagato.impl.model.HexGameState;
 import com.atraparalagato.impl.model.HexPosition;
 import com.atraparalagato.impl.service.GameService;
+import com.atraparalagato.impl.model.GameScore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -148,6 +149,20 @@ public class GameController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Error al guardar la puntuación: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Endpoint para obtener todas las puntuaciones guardadas.
+     * GET /api/game/scores
+     */
+    @GetMapping("/scores")
+    public ResponseEntity<List<GameScore>> getScores() {
+        try {
+            List<GameScore> scores = gameService.getAllScores();
+            return ResponseEntity.ok(scores);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
         }
     }
 
