@@ -1,6 +1,7 @@
 package com.atraparalagato.impl.model;
 
 import com.atraparalagato.base.model.GameBoard;
+
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -23,7 +24,7 @@ public class HexGameBoard extends GameBoard<HexPosition> {
 
     @Override
     protected boolean isValidMove(HexPosition position) {
-        return isPositionInBounds(position) && !isBlocked(position);
+        return isPositionInBounds(position) && !blockedPositions.contains(position);
     }
 
     @Override
@@ -33,36 +34,36 @@ public class HexGameBoard extends GameBoard<HexPosition> {
 
     @Override
     public List<HexPosition> getPositionsWhere(Predicate<HexPosition> condition) {
-        List<HexPosition> positions = new ArrayList<>();
+        List<HexPosition> valid = new ArrayList<>();
         for (int q = -size; q <= size; q++) {
-            for (int r = -size; r <= size; r++) {
+            for (int r = Math.max(-size, -q - size); r <= Math.min(size, -q + size); r++) {
                 HexPosition pos = new HexPosition(q, r);
-                if (isPositionInBounds(pos) && condition.test(pos)) {
-                    positions.add(pos);
+                if (condition.test(pos)) {
+                    valid.add(pos);
                 }
             }
         }
-        return positions;
+        return valid;
     }
 
     @Override
-    public List<HexPosition> getAdjacentPositions(HexPosition position) {
+    public List<HexPosition> getAdjacentPositions(HexPosition pos) {
         int[][] directions = {
-            {1, 0}, {0, 1}, {-1, 1},
-            {-1, 0}, {0, -1}, {1, -1}
+            {1, 0}, {1, -1}, {0, -1},
+            {-1, 0}, {-1, 1}, {0, 1}
         };
-        List<HexPosition> adjacents = new ArrayList<>();
+        List<HexPosition> neighbors = new ArrayList<>();
         for (int[] dir : directions) {
-            HexPosition neighbor = new HexPosition(position.getQ() + dir[0], position.getR() + dir[1]);
+            HexPosition neighbor = new HexPosition(pos.getQ() + dir[0], pos.getR() + dir[1]);
             if (isPositionInBounds(neighbor)) {
-                adjacents.add(neighbor);
+                neighbors.add(neighbor);
             }
         }
-        return adjacents;
+        return neighbors;
     }
 
     @Override
     public boolean isBlocked(HexPosition position) {
         return blockedPositions.contains(position);
     }
-} 
+}
