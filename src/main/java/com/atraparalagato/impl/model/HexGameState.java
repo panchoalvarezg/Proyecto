@@ -2,40 +2,44 @@ package com.atraparalagato.impl.model;
 
 import com.atraparalagato.base.model.GameState;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 public class HexGameState extends GameState<HexPosition> {
 
-    private final int boardSize;
-    private final HexGameBoard board;
+    private HexGameBoard board;
     private HexPosition catPosition;
 
-    public HexGameState(String gameId, int boardSize, HexPosition startPos) {
+    public HexGameState(String gameId, int boardSize, HexPosition catStart) {
         super(gameId);
-        this.boardSize = boardSize;
         this.board = new HexGameBoard(boardSize);
-        this.catPosition = startPos;
-    }
-
-    public HexGameState(String gameId, int boardSize) {
-        this(gameId, boardSize, new HexPosition(0, 0));
+        this.catPosition = catStart;
     }
 
     @Override
     protected boolean canExecuteMove(HexPosition position) {
-        return board.isValidMove(position);
+        return !board.isBlocked(position) && board.getAdjacentPositions(catPosition).contains(position);
     }
 
     @Override
     protected boolean performMove(HexPosition position) {
-        board.makeMove(position);
-        return true;
+        if (canExecuteMove(position)) {
+            board.executeMove(position);
+            return true;
+        }
+        return false;
     }
 
     @Override
     protected void updateGameStatus() {
-        if (catPosition.isAtBorder(boardSize)) {
+        if (catPosition.isAtBorder(board.getSize())) {
             setStatus(GameStatus.PLAYER_LOST);
-        } else if (board.getAdjacentPositions(catPosition).stream().allMatch(board::isBlocked)) {
-            setStatus(GameStatus.PLAYER_WON);
+        } else {
+            boolean surrounded = board.getAdjacentPositions(catPosition)
+                    .stream().allMatch(board::isBlocked);
+            if (surrounded) {
+                setStatus(GameStatus.PLAYER_WON);
+            }
         }
     }
 
@@ -51,41 +55,73 @@ public class HexGameState extends GameState<HexPosition> {
 
     @Override
     public boolean isGameFinished() {
-        return status != GameStatus.IN_PROGRESS;
+        return getStatus() != GameStatus.IN_PROGRESS;
     }
 
     @Override
     public boolean hasPlayerWon() {
-        return status == GameStatus.PLAYER_WON;
+        return getStatus() == GameStatus.PLAYER_WON;
     }
 
     @Override
     public int calculateScore() {
-        return getMoveCount() * 10;
+        return 100 - getMoveCount();
     }
 
     @Override
     public Object getSerializableState() {
-        return new Object() {
-            public final String gameId = getGameId();
-            public final int boardSize = board.getSize();
-            public final HexPosition catPosition = getCatPosition();
-            public final Object blocked = board.getBlockedPositions();
-            public final GameStatus status = getStatus();
-            public final int moves = getMoveCount();
-        };
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("cat", catPosition);
+        data.put("blocked", board.getBlockedPositions());
+        data.put("size", board.getSize());
+        data.put("moves", getMoveCount());
+        data.put("status", getStatus().name());
+        return data;
     }
 
     @Override
     public void restoreFromSerializable(Object serializedState) {
-        throw new UnsupportedOperationException("Deserialización no implementada.");
+        if (serializedState instanceof Map) {
+            Map<?, ?> map = (Map<?, ?>) serializedState;
+            Object catObj = map.get("cat");
+            Object blockedObj = map.get("blocked");
+            Object sizeObj = map.get("size");
+
+            if (catObj instanceof HexPosition && blockedObj instanceof Iterable && sizeObj instanceof Number) {
+                this.catPosition = (HexPosition) catObj;
+                int size = ((Number) sizeObj).intValue();
+                this.board = new HexGameBoard(size);
+
+                for (Object b : (Iterable<?>) blockedObj) {
+                    if (b instanceof HexPosition) {
+                        board.executeMove((HexPosition) b);
+                    }
+                }
+            }
+        }
     }
 
     public HexGameBoard getGameBoard() {
         return board;
     }
 
+    public void setMoveCount(int moveCount) {
+        this.moveCount = moveCount;
+    }
+
+    public void setBoardSize(int size) {
+        this.board = new HexGameBoard(size);
+    }
+
     public int getBoardSize() {
-        return boardSize;
+        return board.getSize();
+    }
+
+    public void updateStatus(GameStatus status) {
+        setStatus(status);
+    }
+
+    public void setDifficulty(String difficulty) {
+        // Optional extension if difficulty levels are needed
     }
 }
