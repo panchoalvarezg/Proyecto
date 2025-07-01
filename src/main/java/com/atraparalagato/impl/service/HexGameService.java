@@ -8,6 +8,9 @@ import com.atraparalagato.base.strategy.CatMovementStrategy;
 
 import java.util.Optional;
 
+/**
+ * Servicio que orquesta la lógica del juego para el tablero hexagonal.
+ */
 public class HexGameService {
 
     private final DataRepository<HexGameState, String> repository;
@@ -25,28 +28,42 @@ public class HexGameService {
         this.currentState = new HexGameState(gameId, board, catStart);
     }
 
+    /**
+     * Ejecuta un movimiento del jugador y luego mueve el gato si procede.
+     * @param pos posición a bloquear
+     * @return true si el movimiento fue exitoso, false si no se pudo ejecutar
+     */
     public boolean executeMove(HexPosition pos) {
         boolean result = currentState.executeMove(pos);
         if (result) catMove();
         return result;
     }
 
+    /**
+     * Realiza el movimiento automático del gato usando su estrategia.
+     */
     public void catMove() {
-        // Lógica de movimiento del gato sin acceso a getGoalPredicate()
         Optional<HexPosition> best = catStrategy.findBestMove(
                 currentState.getCatPosition(),
                 null
         );
         best.ifPresent(newPos -> {
             currentState.setCatPosition(newPos);
-            // Si necesitas actualizar el estado del juego, hazlo aquí.
+            // Aquí puedes actualizar estado/juego terminado si hace falta
         });
     }
 
+    /**
+     * Sugiere el mejor movimiento para el jugador (usando la estrategia del gato).
+     * @return posición sugerida o vacía si no hay sugerencia
+     */
     public Optional<HexPosition> getSuggestedMove() {
         return catStrategy.findBestMove(currentState.getCatPosition(), null);
     }
 
+    /**
+     * Devuelve la posición actual del gato.
+     */
     public HexPosition getTargetPosition() {
         return currentState.getCatPosition();
     }
