@@ -15,8 +15,6 @@ public class GameScore {
     @Column(name = "SCORE")
     private Integer score;
 
-    // Otros campos opcionales, como fecha, boardSize, etc.
-
     // Getters y setters
     public Long getId() { return id; }
     public String getPlayerName() { return playerName; }
