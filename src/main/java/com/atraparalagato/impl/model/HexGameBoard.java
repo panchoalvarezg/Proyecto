@@ -3,63 +3,20 @@ package com.atraparalagato.impl.model;
 import com.atraparalagato.base.model.GameBoard;
 
 import java.util.*;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class HexGameBoard extends GameBoard<HexPosition> {
 
+    private final int size;
+    private final Set<HexPosition> blockedPositions;
+
     public HexGameBoard(int size) {
-        super(size);
+        this.size = size;
+        this.blockedPositions = new LinkedHashSet<>();
     }
 
     @Override
-    protected Set<HexPosition> initializeBlockedPositions() {
-        return new LinkedHashSet<>();
-    }
-
-    @Override
-    protected boolean isPositionInBounds(HexPosition position) {
-        return position.isWithinBounds(size);
-    }
-
-    @Override
-    protected boolean isValidMove(HexPosition position) {
-        return isPositionInBounds(position) && !isBlocked(position);
-    }
-
-    @Override
-    protected void executeMove(HexPosition position) {
-        blockedPositions.add(position);
-    }
-
-    @Override
-    public List<HexPosition> getPositionsWhere(Predicate<HexPosition> condition) {
-        List<HexPosition> positions = new ArrayList<>();
-        for (int q = -size; q <= size; q++) {
-            for (int r = Math.max(-size, -q - size); r <= Math.min(size, -q + size); r++) {
-                HexPosition pos = new HexPosition(q, r);
-                if (condition.test(pos)) {
-                    positions.add(pos);
-                }
-            }
-        }
-        return positions;
-    }
-
-    @Override
-    public List<HexPosition> getAdjacentPositions(HexPosition position) {
-        int[][] directions = {
-            {1, 0}, {1, -1}, {0, -1},
-            {-1, 0}, {-1, 1}, {0, 1}
-        };
-        List<HexPosition> adjacents = new ArrayList<>();
-        for (int[] dir : directions) {
-            HexPosition neighbor = new HexPosition(position.getQ() + dir[0], position.getR() + dir[1]);
-            if (isPositionInBounds(neighbor) && !isBlocked(neighbor)) {
-                adjacents.add(neighbor);
-            }
-        }
-        return adjacents;
+    public int getSize() {
+        return size;
     }
 
     @Override
@@ -67,8 +24,36 @@ public class HexGameBoard extends GameBoard<HexPosition> {
         return blockedPositions.contains(position);
     }
 
-    // Setter opcional necesario para restaurar desde repositorio
+    @Override
+    public void makeMove(HexPosition position) {
+        blockedPositions.add(position);
+    }
+
+    @Override
+    public List<HexPosition> getAdjacentPositions(HexPosition position) {
+        List<HexPosition> neighbors = new ArrayList<>();
+        for (HexPosition neighbor : position.neighbors()) {
+            if (neighbor.isWithinBounds(size) && !isBlocked(neighbor)) {
+                neighbors.add(neighbor);
+            }
+        }
+        return neighbors;
+    }
+
+    public Set<HexPosition> getBlockedPositions() {
+        return blockedPositions;
+    }
+
     public void setBlockedPositions(Set<HexPosition> positions) {
-        this.blockedPositions = new LinkedHashSet<>(positions);
+        blockedPositions.clear();
+        blockedPositions.addAll(positions);
+    }
+
+    protected boolean isPositionInBounds(HexPosition position) {
+        return position.isWithinBounds(size);
+    }
+
+    protected boolean isValidMove(HexPosition position) {
+        return !isBlocked(position) && isPositionInBounds(position);
     }
 }
