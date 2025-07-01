@@ -1,6 +1,8 @@
 package com.atraparalagato.impl.model;
 
 import com.atraparalagato.base.model.GameBoard;
+import com.atraparalagato.base.model.GameState;
+import com.atraparalagato.base.model.Position;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -24,7 +26,7 @@ public class HexGameBoard extends GameBoard<HexPosition> {
 
     @Override
     protected boolean isValidMove(HexPosition position) {
-        return isPositionInBounds(position) && !blockedPositions.contains(position);
+        return isPositionInBounds(position) && !isBlocked(position);
     }
 
     @Override
@@ -34,27 +36,28 @@ public class HexGameBoard extends GameBoard<HexPosition> {
 
     @Override
     public List<HexPosition> getPositionsWhere(Predicate<HexPosition> condition) {
-        List<HexPosition> valid = new ArrayList<>();
-        for (int q = -size; q <= size; q++) {
-            for (int r = Math.max(-size, -q - size); r <= Math.min(size, -q + size); r++) {
+        List<HexPosition> result = new ArrayList<>();
+        for (int q = -size / 2; q <= size / 2; q++) {
+            for (int r = -size / 2; r <= size / 2; r++) {
                 HexPosition pos = new HexPosition(q, r);
-                if (condition.test(pos)) {
-                    valid.add(pos);
+                if (pos.isWithinBounds(size) && condition.test(pos)) {
+                    result.add(pos);
                 }
             }
         }
-        return valid;
+        return result;
     }
 
     @Override
-    public List<HexPosition> getAdjacentPositions(HexPosition pos) {
+    public List<HexPosition> getAdjacentPositions(HexPosition position) {
         int[][] directions = {
-            {1, 0}, {1, -1}, {0, -1},
-            {-1, 0}, {-1, 1}, {0, 1}
+                {1, 0}, {1, -1}, {0, -1},
+                {-1, 0}, {-1, 1}, {0, 1}
         };
+
         List<HexPosition> neighbors = new ArrayList<>();
         for (int[] dir : directions) {
-            HexPosition neighbor = new HexPosition(pos.getQ() + dir[0], pos.getR() + dir[1]);
+            HexPosition neighbor = new HexPosition(position.getQ() + dir[0], position.getR() + dir[1]);
             if (isPositionInBounds(neighbor)) {
                 neighbors.add(neighbor);
             }
@@ -65,5 +68,9 @@ public class HexGameBoard extends GameBoard<HexPosition> {
     @Override
     public boolean isBlocked(HexPosition position) {
         return blockedPositions.contains(position);
+    }
+
+    public void setBlockedPositions(Set<HexPosition> blockedPositions) {
+        this.blockedPositions = blockedPositions;
     }
 }
