@@ -1,7 +1,8 @@
-// HexPosition.java
 package com.atraparalagato.impl.model;
 
 import com.atraparalagato.base.model.Position;
+
+import java.util.Objects;
 
 public class HexPosition extends Position {
     private final int q;
@@ -20,56 +21,62 @@ public class HexPosition extends Position {
         return r;
     }
 
+    public int getS() {
+        return -q - r;
+    }
+
     @Override
     public double distanceTo(Position other) {
         if (!(other instanceof HexPosition)) return Double.MAX_VALUE;
         HexPosition o = (HexPosition) other;
-        int dq = Math.abs(q - o.q);
-        int dr = Math.abs(r - o.r);
-        int ds = Math.abs((-q - r) - (-o.q - o.r));
-        return (dq + dr + ds) / 2.0;
+        return (Math.abs(q - o.q) + Math.abs(r - o.r) + Math.abs(getS() - o.getS())) / 2.0;
     }
 
     @Override
     public Position add(Position other) {
         if (!(other instanceof HexPosition)) return this;
         HexPosition o = (HexPosition) other;
-        return new HexPosition(q + o.q, r + o.r);
+        return new HexPosition(this.q + o.q, this.r + o.r);
     }
 
     @Override
     public Position subtract(Position other) {
         if (!(other instanceof HexPosition)) return this;
         HexPosition o = (HexPosition) other;
-        return new HexPosition(q - o.q, r - o.r);
+        return new HexPosition(this.q - o.q, this.r - o.r);
     }
 
     @Override
     public boolean isAdjacentTo(Position other) {
-        return distanceTo(other) == 1.0;
+        if (!(other instanceof HexPosition)) return false;
+        HexPosition o = (HexPosition) other;
+        return this.distanceTo(o) == 1.0;
     }
 
     @Override
     public boolean isWithinBounds(int maxSize) {
-        int s = -q - r;
-        return Math.abs(q) <= maxSize && Math.abs(r) <= maxSize && Math.abs(s) <= maxSize;
+        return Math.abs(q) <= maxSize && Math.abs(r) <= maxSize && Math.abs(getS()) <= maxSize;
     }
 
-    @Override
-    public int hashCode() {
-        return 31 * q + r;
+    public boolean isAtBorder(int boardSize) {
+        return Math.abs(q) == boardSize || Math.abs(r) == boardSize || Math.abs(getS()) == boardSize;
     }
 
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        HexPosition that = (HexPosition) obj;
-        return q == that.q && r == that.r;
+        if (!(obj instanceof HexPosition)) return false;
+        HexPosition o = (HexPosition) obj;
+        return this.q == o.q && this.r == o.r;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(q, r);
     }
 
     @Override
     public String toString() {
-        return "(" + q + ", " + r + ")";
+        return "(" + q + "," + r + ")";
     }
 }
