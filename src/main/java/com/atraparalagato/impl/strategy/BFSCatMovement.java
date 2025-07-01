@@ -1,18 +1,17 @@
 package com.atraparalagato.impl.strategy;
 
 import com.atraparalagato.base.strategy.CatMovementStrategy;
-import com.atraparalagato.impl.model.HexGameBoard;
 import com.atraparalagato.impl.model.HexPosition;
+import com.atraparalagato.impl.model.HexGameBoard;
 
 import java.util.*;
 
 public class BFSCatMovement implements CatMovementStrategy<HexPosition> {
 
     @Override
-    public HexPosition getNextMove(HexPosition catPosition, HexGameBoard board) {
-        Queue<HexPosition> queue = new LinkedList<>();
+    public HexPosition getNextMove(HexGameBoard board, HexPosition catPosition) {
         Set<HexPosition> visited = new HashSet<>();
-        Map<HexPosition, HexPosition> cameFrom = new HashMap<>();
+        Queue<HexPosition> queue = new LinkedList<>();
 
         queue.add(catPosition);
         visited.add(catPosition);
@@ -21,27 +20,42 @@ public class BFSCatMovement implements CatMovementStrategy<HexPosition> {
             HexPosition current = queue.poll();
 
             if (current.isAtBorder(board.getSize())) {
-                return reconstructPath(cameFrom, current);
+                return reconstructPath(catPosition, current);
             }
 
             for (HexPosition neighbor : board.getAdjacentPositions(current)) {
-                if (!visited.contains(neighbor) && !board.isBlocked(neighbor)) {
-                    visited.add(neighbor);
-                    cameFrom.put(neighbor, current);
+                if (!board.isBlocked(neighbor) && visited.add(neighbor)) {
+                    neighbor.setPrevious(current);
                     queue.add(neighbor);
                 }
             }
         }
 
-        return null; // sin camino
+        return null; // no path found
     }
 
-    private HexPosition reconstructPath(Map<HexPosition, HexPosition> cameFrom, HexPosition current) {
-        while (cameFrom.containsKey(current) && !cameFrom.get(current).equals(current)) {
-            HexPosition previous = cameFrom.get(current);
-            if (cameFrom.get(previous) == null) return current;
-            current = previous;
+    @Override
+    public List<HexPosition> getFullPath(HexGameBoard board, HexPosition catPosition) {
+        List<HexPosition> path = new ArrayList<>();
+        HexPosition move = getNextMove(board, catPosition);
+
+        if (move == null) return path;
+
+        while (move != null && !move.equals(catPosition)) {
+            path.add(0, move);
+            move = move.getPrevious();
         }
-        return current;
+        return path;
     }
-}
+
+    private HexPosition reconstructPath(HexPosition start, HexPosition end) {
+        HexPosition step = end;
+        while (step != null && !step.equals(start)) {
+            if (step.getPrevious() != null && step.getPrevious().equals(start)) {
+                return step;
+            }
+            step = step.getPrevious();
+        }
+        return null;
+    }
+} 
