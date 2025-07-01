@@ -1,55 +1,58 @@
-// HexGameBoard.java
 package com.atraparalagato.impl.model;
 
 import com.atraparalagato.base.model.GameBoard;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+
+import java.util.*;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class HexGameBoard extends GameBoard<HexPosition> {
-    private final int size;
-    private final Set<HexPosition> blockedPositions = new HashSet<>();
 
     public HexGameBoard(int size) {
-        this.size = size;
-    }
-
-    public int getSize() { return size; }
-
-    @Override
-    public Set<HexPosition> getBlockedPositions() {
-        return blockedPositions;
-    }
-
-    @Override
-    public boolean isBlocked(HexPosition pos) {
-        return blockedPositions.contains(pos);
+        super(size);
     }
 
     @Override
     public boolean isPositionInBounds(HexPosition pos) {
-        int q = pos.getQ(), r = pos.getR(), s = pos.getS();
-        return Math.abs(q) <= size && Math.abs(r) <= size && Math.abs(s) <= size;
+        int radius = getSize() / 2;
+        return Math.abs(pos.getQ()) <= radius &&
+               Math.abs(pos.getR()) <= radius &&
+               Math.abs(pos.getQ() + pos.getR()) <= radius;
     }
 
     @Override
-    public List<HexPosition> getPositionsWhere(Predicate<HexPosition> p) {
-        return generateAllPositions().stream().filter(p).collect(Collectors.toList());
+    public boolean isValidMove(HexPosition pos) {
+        return isPositionInBounds(pos) && !isBlocked(pos);
     }
 
-    private Set<HexPosition> generateAllPositions() {
-        Set<HexPosition> all = new HashSet<>();
-        for (int q = -size; q <= size; q++) {
-            for (int r = -size; r <= size; r++) {
-                int s = -q - r;
-                if (Math.abs(s) <= size) {
-                    all.add(new HexPosition(q, r));
+    @Override
+    public void executeMove(HexPosition pos) {
+        if (!isValidMove(pos)) throw new IllegalArgumentException("Invalid move");
+        getBlockedPositions().add(pos);
+    }
+
+    @Override
+    public List<HexPosition> getAdjacentPositions(HexPosition pos) {
+        int[][] directions = {{1, 0}, {1, -1}, {0, -1}, {-1, 0}, {-1, 1}, {0, 1}};
+        List<HexPosition> adj = new ArrayList<>();
+        for (int[] d : directions) {
+            HexPosition p = new HexPosition(pos.getQ() + d[0], pos.getR() + d[1]);
+            if (isPositionInBounds(p)) adj.add(p);
+        }
+        return adj;
+    }
+
+    @Override
+    public List<HexPosition> getPositionsWhere(Predicate<HexPosition> condition) {
+        List<HexPosition> positions = new ArrayList<>();
+        int radius = getSize() / 2;
+        for (int q = -radius; q <= radius; q++) {
+            for (int r = -radius; r <= radius; r++) {
+                HexPosition pos = new HexPosition(q, r);
+                if (isPositionInBounds(pos) && condition.test(pos)) {
+                    positions.add(pos);
                 }
             }
         }
-        return all;
+        return positions;
     }
 }
-
