@@ -25,6 +25,11 @@ public class HexPosition extends Position {
         return -q - r;
     }
 
+    public boolean isAtBorder(int boardSize) {
+        int s = getS();
+        return Math.abs(q) == boardSize / 2 || Math.abs(r) == boardSize / 2 || Math.abs(s) == boardSize / 2;
+    }
+
     @Override
     public double distanceTo(Position other) {
         if (!(other instanceof HexPosition)) return Double.MAX_VALUE;
@@ -34,32 +39,30 @@ public class HexPosition extends Position {
 
     @Override
     public Position add(Position other) {
-        if (!(other instanceof HexPosition)) return this;
         HexPosition o = (HexPosition) other;
-        return new HexPosition(this.q + o.q, this.r + o.r);
+        return new HexPosition(q + o.q, r + o.r);
     }
 
     @Override
     public Position subtract(Position other) {
-        if (!(other instanceof HexPosition)) return this;
         HexPosition o = (HexPosition) other;
-        return new HexPosition(this.q - o.q, this.r - o.r);
+        return new HexPosition(q - o.q, r - o.r);
     }
 
     @Override
     public boolean isAdjacentTo(Position other) {
-        if (!(other instanceof HexPosition)) return false;
-        HexPosition o = (HexPosition) other;
-        return this.distanceTo(o) == 1.0;
+        return this.distanceTo(other) == 1.0;
     }
 
     @Override
     public boolean isWithinBounds(int maxSize) {
-        return Math.abs(q) <= maxSize && Math.abs(r) <= maxSize && Math.abs(getS()) <= maxSize;
+        int s = getS();
+        return Math.abs(q) <= maxSize / 2 && Math.abs(r) <= maxSize / 2 && Math.abs(s) <= maxSize / 2;
     }
 
-    public boolean isAtBorder(int boardSize) {
-        return Math.abs(q) == boardSize || Math.abs(r) == boardSize || Math.abs(getS()) == boardSize;
+    @Override
+    public int hashCode() {
+        return Objects.hash(q, r);
     }
 
     @Override
@@ -71,12 +74,7 @@ public class HexPosition extends Position {
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(q, r);
-    }
-
-    @Override
     public String toString() {
         return "(" + q + "," + r + ")";
     }
-}
+} 
