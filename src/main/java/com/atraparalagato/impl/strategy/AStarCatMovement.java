@@ -1,61 +1,63 @@
 package com.atraparalagato.impl.strategy;
 
 import com.atraparalagato.base.strategy.CatMovementStrategy;
-import com.atraparalagato.impl.model.HexPosition;
 import com.atraparalagato.impl.model.HexGameBoard;
+import com.atraparalagato.impl.model.HexPosition;
 
 import java.util.*;
 
-public class BFSCatMovement implements CatMovementStrategy<HexPosition> {
+public class AStarCatMovement implements CatMovementStrategy<HexPosition> {
 
     @Override
-    public HexPosition getNextMove(HexGameBoard board, HexPosition catPosition) {
-        Set<HexPosition> visited = new HashSet<>();
-        Queue<HexPosition> queue = new LinkedList<>();
+    public HexPosition getNextMove(HexPosition catPosition, HexGameBoard board) {
+        List<HexPosition> path = getFullPath(catPosition, board);
+        return (path != null && path.size() > 1) ? path.get(1) : catPosition;
+    }
 
-        queue.add(catPosition);
-        visited.add(catPosition);
+    @Override
+    public List<HexPosition> getFullPath(HexPosition catPosition, HexGameBoard board) {
+        PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingInt(n -> n.fScore));
+        Map<HexPosition, HexPosition> cameFrom = new HashMap<>();
+        Map<HexPosition, Integer> gScore = new HashMap<>();
 
-        while (!queue.isEmpty()) {
-            HexPosition current = queue.poll();
+        gScore.put(catPosition, 0);
+        openSet.add(new Node(catPosition, heuristic(catPosition, board)));
 
-            if (current.isAtBorder(board.getSize())) {
-                return reconstructPath(catPosition, current);
+        while (!openSet.isEmpty()) {
+            Node current = openSet.poll();
+            if (current.position.isAtBorder(board.getSize())) {
+                return reconstructPath(cameFrom, current.position);
             }
-
-            for (HexPosition neighbor : board.getAdjacentPositions(current)) {
-                if (!board.isBlocked(neighbor) && visited.add(neighbor)) {
-                    neighbor.setPrevious(current);
-                    queue.add(neighbor);
+            for (HexPosition neighbor : board.getAdjacentPositions(current.position)) {
+                if (board.isBlocked(neighbor)) continue;
+                int tentativeG = gScore.get(current.position) + 1;
+                if (tentativeG < gScore.getOrDefault(neighbor, Integer.MAX_VALUE)) {
+                    cameFrom.put(neighbor, current.position);
+                    gScore.put(neighbor, tentativeG);
+                    int fScore = tentativeG + heuristic(neighbor, board);
+                    openSet.add(new Node(neighbor, fScore));
                 }
             }
         }
-
-        return null; // no path found
+        return null;
     }
 
-    @Override
-    public List<HexPosition> getFullPath(HexGameBoard board, HexPosition catPosition) {
+    private int heuristic(HexPosition position, HexGameBoard board) {
+        int size = board.getSize();
+        int distanceToEdge = Math.min(Math.min(position.q(), size - position.q() - 1),
+                                      Math.min(position.r(), size - position.r() - 1));
+        return distanceToEdge;
+    }
+
+    private List<HexPosition> reconstructPath(Map<HexPosition, HexPosition> cameFrom, HexPosition current) {
         List<HexPosition> path = new ArrayList<>();
-        HexPosition move = getNextMove(board, catPosition);
-
-        if (move == null) return path;
-
-        while (move != null && !move.equals(catPosition)) {
-            path.add(0, move);
-            move = move.getPrevious();
+        while (current != null) {
+            path.add(current);
+            current = cameFrom.get(current);
         }
+        Collections.reverse(path);
         return path;
     }
 
-    private HexPosition reconstructPath(HexPosition start, HexPosition end) {
-        HexPosition step = end;
-        while (step != null && !step.equals(start)) {
-            if (step.getPrevious() != null && step.getPrevious().equals(start)) {
-                return step;
-            }
-            step = step.getPrevious();
-        }
-        return null;
-    }
-} 
+    private record Node(HexPosition position, int fScore) {}
+}
