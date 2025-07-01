@@ -1,9 +1,24 @@
-package com.atraparalagato.impl.repository;
+package com.atraparalagato.impl.service;
 
 import com.atraparalagato.impl.model.GameScore;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import com.atraparalagato.impl.repository.GameScoreRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
-@Repository
-public interface GameScoreRepository extends JpaRepository<GameScore, Long> {
+@Service
+public class GameService {
+
+    private final GameScoreRepository gameScoreRepository;
+
+    @Autowired
+    public GameService(GameScoreRepository gameScoreRepository) {
+        this.gameScoreRepository = gameScoreRepository;
+    }
+
+    public void saveScore(String playerName, Integer score) {
+        GameScore gameScore = new GameScore();
+        gameScore.setPlayerName(playerName);
+        gameScore.setScore(score);
+        gameScoreRepository.save(gameScore);
+    }
 }
