@@ -1,16 +1,22 @@
-// HexGameState.java
 package com.atraparalagato.impl.model;
 
 import com.atraparalagato.base.model.GameState;
 
 public class HexGameState extends GameState<HexPosition> {
+
+    private final int boardSize;
     private final HexGameBoard board;
     private HexPosition catPosition;
 
-    public HexGameState(String gameId, int boardSize, HexPosition initialCatPosition) {
+    public HexGameState(String gameId, int boardSize, HexPosition startPos) {
         super(gameId);
+        this.boardSize = boardSize;
         this.board = new HexGameBoard(boardSize);
-        this.catPosition = initialCatPosition;
+        this.catPosition = startPos;
+    }
+
+    public HexGameState(String gameId, int boardSize) {
+        this(gameId, boardSize, new HexPosition(0, 0));
     }
 
     @Override
@@ -20,14 +26,13 @@ public class HexGameState extends GameState<HexPosition> {
 
     @Override
     protected boolean performMove(HexPosition position) {
-        boolean moved = board.makeMove(position);
-        if (moved) catPosition = position;
-        return moved;
+        board.makeMove(position);
+        return true;
     }
 
     @Override
     protected void updateGameStatus() {
-        if (catPosition.isWithinBounds(1)) {
+        if (catPosition.isAtBorder(boardSize)) {
             setStatus(GameStatus.PLAYER_LOST);
         } else if (board.getAdjacentPositions(catPosition).stream().allMatch(board::isBlocked)) {
             setStatus(GameStatus.PLAYER_WON);
@@ -56,22 +61,31 @@ public class HexGameState extends GameState<HexPosition> {
 
     @Override
     public int calculateScore() {
-        return 100 - getMoveCount();
+        return getMoveCount() * 10;
     }
 
     @Override
     public Object getSerializableState() {
-        return new Object[]{catPosition.getQ(), catPosition.getR(), status.name(), moveCount};
+        return new Object() {
+            public final String gameId = getGameId();
+            public final int boardSize = board.getSize();
+            public final HexPosition catPosition = getCatPosition();
+            public final Object blocked = board.getBlockedPositions();
+            public final GameStatus status = getStatus();
+            public final int moves = getMoveCount();
+        };
     }
 
     @Override
     public void restoreFromSerializable(Object serializedState) {
-        if (serializedState instanceof Object[] data && data.length == 4) {
-            int q = (Integer) data[0];
-            int r = (Integer) data[1];
-            catPosition = new HexPosition(q, r);
-            status = GameStatus.valueOf((String) data[2]);
-            moveCount = (Integer) data[3];
-        }
+        throw new UnsupportedOperationException("Deserialización no implementada.");
+    }
+
+    public HexGameBoard getGameBoard() {
+        return board;
+    }
+
+    public int getBoardSize() {
+        return boardSize;
     }
 }
