@@ -1,58 +1,53 @@
 package com.atraparalagato.impl.service;
 
-import com.atraparalagato.base.service.GameService;
-import com.atraparalagato.impl.model.HexGameState;
 import com.atraparalagato.impl.model.HexPosition;
-import com.atraparalagato.impl.strategy.AStarCatMovement;
+import com.atraparalagato.impl.model.HexGameBoard;
+import com.atraparalagato.impl.model.HexGameState;
+import com.atraparalagato.base.repository.DataRepository;
 import com.atraparalagato.base.strategy.CatMovementStrategy;
 
 import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
-public class HexGameService implements GameService<HexGameState, HexPosition> {
+public class HexGameService {
 
-    private final ConcurrentHashMap<String, HexGameState> games = new ConcurrentHashMap<>();
-    private final CatMovementStrategy<HexPosition> catMovement = new AStarCatMovement();
+    private final DataRepository<HexGameState, String> repository;
+    private final CatMovementStrategy<HexPosition> catStrategy;
+    private HexGameState currentState;
 
-    @Override
-    public HexGameState createGame(int boardSize, String difficulty) {
-        String gameId = UUID.randomUUID().toString();
-        HexPosition initialCat = new HexPosition(0, 0);
-        HexGameState gameState = new HexGameState(gameId, boardSize, initialCat);
-        gameState.setDifficulty(difficulty);
-        games.put(gameId, gameState);
-        return gameState;
+    public HexGameService(DataRepository<HexGameState, String> repository,
+                          CatMovementStrategy<HexPosition> catStrategy,
+                          int boardSize,
+                          HexPosition catStart,
+                          String gameId) {
+        this.repository = repository;
+        this.catStrategy = catStrategy;
+        HexGameBoard board = new HexGameBoard(boardSize);
+        this.currentState = new HexGameState(gameId, board, catStart);
     }
 
-    @Override
-    public Optional<HexGameState> getGame(String gameId) {
-        return Optional.ofNullable(games.get(gameId));
+    public boolean executeMove(HexPosition pos) {
+        boolean result = currentState.executeMove(pos);
+        if (result) catMove();
+        return result;
     }
 
-    @Override
-    public boolean blockPosition(String gameId, HexPosition position) {
-        HexGameState state = games.get(gameId);
-        if (state == null || !state.getGameBoard().isValidMove(position)) {
-            return false;
-        }
-        return state.executeMove(position);
+    public void catMove() {
+        // Lógica de movimiento del gato sin acceso a getGoalPredicate()
+        Optional<HexPosition> best = catStrategy.findBestMove(
+                currentState.getCatPosition(),
+                null
+        );
+        best.ifPresent(newPos -> {
+            currentState.setCatPosition(newPos);
+            // Si necesitas actualizar el estado del juego, hazlo aquí.
+        });
     }
 
-    @Override
-    public boolean moveCat(String gameId) {
-        HexGameState state = games.get(gameId);
-        if (state == null || state.isGameFinished()) {
-            return false;
-        }
-        Optional<HexPosition> next = catMovement.computeNextPosition(state);
-        next.ifPresent(state::setCatPosition);
-        return next.isPresent();
+    public Optional<HexPosition> getSuggestedMove() {
+        return catStrategy.findBestMove(currentState.getCatPosition(), null);
     }
 
-    @Override
-    public boolean isGameFinished(String gameId) {
-        HexGameState state = games.get(gameId);
-        return state != null && state.isGameFinished();
+    public HexPosition getTargetPosition() {
+        return currentState.getCatPosition();
     }
 }
