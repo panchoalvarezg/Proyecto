@@ -242,6 +242,35 @@ function calcularPuntajeActual() {
     return Math.floor(Math.random() * 1000);
 }
 
+/**
+ * Muestra las puntuaciones guardadas al apretar el botón "Ver Puntuaciones"
+ */
+async function showHighScores() {
+    try {
+        const response = await fetch('/api/game/scores');
+        const scores = await response.json();
+        const scoreList = document.getElementById('score-list');
+        scoreList.innerHTML = ''; // Limpia la lista actual
+
+        if (scores.length === 0) {
+            scoreList.innerHTML = '<li>No hay puntuaciones registradas.</li>';
+        } else {
+            // Puedes ordenar por SCORE si lo deseas
+            scores
+                .filter(s => s.playerName && s.score) // solo los válidos
+                .sort((a, b) => b.score - a.score) // de mayor a menor
+                .forEach(s => {
+                    const li = document.createElement('li');
+                    li.textContent = `${s.playerName} - ${s.score}`;
+                    scoreList.appendChild(li);
+                });
+        }
+        document.getElementById('high-score-section').style.display = 'block';
+    } catch (e) {
+        alert('Error al cargar las puntuaciones');
+    }
+}
+
 const initializeGame = () => {
     window.game = new Game();
     return window.game;
