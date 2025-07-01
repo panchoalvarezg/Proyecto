@@ -1,54 +1,72 @@
 package com.atraparalagato.impl.strategy;
 
+import com.atraparalagato.base.strategy.CatMovementStrategy;
 import com.atraparalagato.impl.model.HexPosition;
 import com.atraparalagato.impl.model.HexGameBoard;
 
 import java.util.*;
 
-public class AStarCatMovement {
-    private final HexGameBoard board;
+public class AStarCatMovement implements CatMovementStrategy<HexPosition> {
 
-    public AStarCatMovement(HexGameBoard board) {
-        this.board = board;
+    private static class Node {
+        HexPosition position;
+        Node parent;
+        double g;
+        double h;
+
+        Node(HexPosition position, Node parent, double g, double h) {
+            this.position = position;
+            this.parent = parent;
+            this.g = g;
+            this.h = h;
+        }
+
+        double f() {
+            return g + h;
+        }
     }
 
-    public boolean hasPathToGoal(HexPosition catPos) {
-        return getNextMove(catPos).isPresent();
-    }
+    @Override
+    public HexPosition getNextMove(HexPosition start, HexGameBoard board) {
+        PriorityQueue<Node> open = new PriorityQueue<>(Comparator.comparingDouble(Node::f));
+        Set<HexPosition> closed = new HashSet<>();
 
-    public Optional<HexPosition> getNextMove(HexPosition catPos) {
-        Set<HexPosition> visited = new HashSet<>();
-        Queue<List<HexPosition>> queue = new LinkedList<>();
-        queue.add(List.of(catPos));
+        open.add(new Node(start, null, 0, heuristic(start, board)));
 
-        while (!queue.isEmpty()) {
-            List<HexPosition> path = queue.poll();
-            HexPosition current = path.get(path.size() - 1);
+        while (!open.isEmpty()) {
+            Node current = open.poll();
+            if (closed.contains(current.position)) continue;
 
-            if (current.isAtBorder(board.getSize()) && !current.equals(catPos)) {
-                return Optional.of(path.get(1));
+            closed.add(current.position);
+
+            if (current.position.isAtBorder(board.getSize())) {
+                return reconstructPath(current);
             }
-            for (HexPosition n : getNeighbors(current)) {
-                if (!visited.contains(n) && !board.isBlocked(n)) {
-                    visited.add(n);
-                    List<HexPosition> newPath = new ArrayList<>(path);
-                    newPath.add(n);
-                    queue.add(newPath);
-                }
+
+            for (HexPosition neighbor : board.getAdjacentPositions(current.position)) {
+                if (board.isBlocked(neighbor) || closed.contains(neighbor)) continue;
+                double gScore = current.g + current.position.distanceTo(neighbor);
+                double hScore = heuristic(neighbor, board);
+                open.add(new Node(neighbor, current, gScore, hScore));
             }
         }
-        return Optional.empty();
+
+        return start; // No se encontró camino, gato se queda en su lugar
     }
 
-    private List<HexPosition> getNeighbors(HexPosition pos) {
-        int[][] deltas = {{1, 0}, {0, 1}, {-1, 1}, {-1, 0}, {0, -1}, {1, -1}};
-        List<HexPosition> neighbors = new ArrayList<>();
-        for (int[] d : deltas) {
-            HexPosition neighbor = new HexPosition(pos.getQ() + d[0], pos.getR() + d[1]);
-            if (board.isPositionInBounds(neighbor)) {
-                neighbors.add(neighbor);
-            }
+    private double heuristic(HexPosition pos, HexGameBoard board) {
+        int size = board.getSize();
+        // Distancia mínima a un borde (heurística simple)
+        return Math.min(Math.min(Math.abs(pos.getQ()), Math.abs(pos.getR())), Math.abs(-pos.getQ() - pos.getR()));
+    }
+
+    private HexPosition reconstructPath(Node node) {
+        List<HexPosition> path = new ArrayList<>();
+        while (node.parent != null) {
+            path.add(node.position);
+            node = node.parent;
         }
-        return neighbors;
+        Collections.reverse(path);
+        return path.isEmpty() ? null : path.get(0); // Devuelve el primer paso
     }
 }
