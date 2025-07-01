@@ -2,21 +2,84 @@ package com.atraparalagato.impl.model;
 
 import com.atraparalagato.base.model.GameBoard;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.ArrayList;
 
+/**
+ * Tablero hexagonal axial donde:
+ * - Toda celda visible en el frontend (hexágono axial completo de radio igual a boardSize - 1) es jugable/bloqueable.
+ */
 public class HexGameBoard extends GameBoard<HexPosition> {
 
-    private final int size;
-    private final Set<HexPosition> blockedPositions;
-
     public HexGameBoard(int size) {
-        this.size = size;
-        this.blockedPositions = new LinkedHashSet<>();
+        super(size);
     }
 
     @Override
-    public int getSize() {
-        return size;
+    protected Set<HexPosition> initializeBlockedPositions() {
+        return new HashSet<>();
+    }
+
+    /**
+     * Una posición está en el tablero si pertenece al hexágono axial de radio igual a (size - 1).
+     * Esto permite bloquear y moverse por cualquier celda que el frontend muestre.
+     */
+    @Override
+    protected boolean isPositionInBounds(HexPosition position) {
+        int q = position.getQ();
+        int r = position.getR();
+        int s = -q - r;
+        int radius = size - 1; // El radio visual es 1 menos que el size lógico
+        int max = Math.max(Math.abs(q), Math.max(Math.abs(r), Math.abs(s)));
+        return max <= radius;
+    }
+
+    @Override
+    protected boolean isValidMove(HexPosition position) {
+        return isPositionInBounds(position) && !isBlocked(position);
+    }
+
+    @Override
+    protected void executeMove(HexPosition position) {
+        blockedPositions.add(position);
+    }
+
+    @Override
+    public List<HexPosition> getPositionsWhere(Predicate<HexPosition> condition) {
+        List<HexPosition> list = new ArrayList<>();
+        int radius = size - 1;
+        for (int q = -radius; q <= radius; q++) {
+            for (int r = -radius; r <= radius; r++) {
+                int s = -q - r;
+                int max = Math.max(Math.abs(q), Math.max(Math.abs(r), Math.abs(s)));
+                if (max <= radius) {
+                    HexPosition pos = new HexPosition(q, r);
+                    if (condition.test(pos)) {
+                        list.add(pos);
+                    }
+                }
+            }
+        }
+        return list;
+    }
+
+    @Override
+    public List<HexPosition> getAdjacentPositions(HexPosition position) {
+        int[][] dirs = {
+            {1, 0}, {1, -1}, {0, -1},
+            {-1, 0}, {-1, 1}, {0, 1}
+        };
+        List<HexPosition> adj = new ArrayList<>();
+        for (int[] d : dirs) {
+            HexPosition n = new HexPosition(position.getQ() + d[0], position.getR() + d[1]);
+            if (isPositionInBounds(n)) {
+                adj.add(n);
+            }
+        }
+        return adj;
     }
 
     @Override
@@ -24,36 +87,15 @@ public class HexGameBoard extends GameBoard<HexPosition> {
         return blockedPositions.contains(position);
     }
 
-    @Override
-    public void makeMove(HexPosition position) {
-        blockedPositions.add(position);
-    }
-
-    @Override
-    public List<HexPosition> getAdjacentPositions(HexPosition position) {
-        List<HexPosition> neighbors = new ArrayList<>();
-        for (HexPosition neighbor : position.neighbors()) {
-            if (neighbor.isWithinBounds(size) && !isBlocked(neighbor)) {
-                neighbors.add(neighbor);
+    /**
+     * El gato está atrapado si no tiene adyacentes válidos y desbloqueados.
+     */
+    public boolean isCatTrapped(HexPosition catPos) {
+        for (HexPosition n : getAdjacentPositions(catPos)) {
+            if (!isBlocked(n)) {
+                return false;
             }
         }
-        return neighbors;
-    }
-
-    public Set<HexPosition> getBlockedPositions() {
-        return blockedPositions;
-    }
-
-    public void setBlockedPositions(Set<HexPosition> positions) {
-        blockedPositions.clear();
-        blockedPositions.addAll(positions);
-    }
-
-    protected boolean isPositionInBounds(HexPosition position) {
-        return position.isWithinBounds(size);
-    }
-
-    protected boolean isValidMove(HexPosition position) {
-        return !isBlocked(position) && isPositionInBounds(position);
+        return true;
     }
 }
