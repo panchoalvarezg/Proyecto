@@ -1,84 +1,83 @@
 package com.atraparalagato.impl.model;
 
+import com.atraparalagato.base.model.GameBoard;
+import com.atraparalagato.base.model.GameState;
 import com.atraparalagato.base.model.Position;
 
-import java.util.Objects;
+import java.util.*;
+import java.util.function.Predicate;
 
-public class HexPosition extends Position {
-    private final int q;
-    private final int r;
+public class HexGameBoard extends GameBoard<HexPosition> {
 
-    public HexPosition(int q, int r) {
-        this.q = q;
-        this.r = r;
-    }
-
-    public int getQ() {
-        return q;
-    }
-
-    public int getR() {
-        return r;
-    }
-
-    public int getS() {
-        return -q - r;
+    public HexGameBoard(int size) {
+        super(size);
     }
 
     @Override
-    public double distanceTo(Position other) {
-        if (!(other instanceof HexPosition)) return Double.MAX_VALUE;
-        HexPosition o = (HexPosition) other;
-        int dq = Math.abs(this.q - o.q);
-        int dr = Math.abs(this.r - o.r);
-        int ds = Math.abs(this.getS() - o.getS());
-        return (dq + dr + ds) / 2.0;
+    protected Set<HexPosition> initializeBlockedPositions() {
+        return new HashSet<>();
     }
 
     @Override
-    public Position add(Position other) {
-        if (!(other instanceof HexPosition)) return this;
-        HexPosition o = (HexPosition) other;
-        return new HexPosition(this.q + o.q, this.r + o.r);
+    public boolean isPositionInBounds(HexPosition position) {
+        return position.isWithinBounds(size);
     }
 
     @Override
-    public Position subtract(Position other) {
-        if (!(other instanceof HexPosition)) return this;
-        HexPosition o = (HexPosition) other;
-        return new HexPosition(this.q - o.q, this.r - o.r);
+    public boolean isValidMove(HexPosition position) {
+        return isPositionInBounds(position) && !isBlocked(position);
     }
 
     @Override
-    public boolean isAdjacentTo(Position other) {
-        return distanceTo(other) == 1.0;
+    protected void executeMove(HexPosition position) {
+        blockedPositions.add(position);
     }
 
     @Override
-    public boolean isWithinBounds(int maxSize) {
-        int s = getS();
-        return Math.abs(q) <= maxSize && Math.abs(r) <= maxSize && Math.abs(s) <= maxSize;
-    }
-
-    public boolean isAtBorder(int size) {
-        return Math.abs(q) == size || Math.abs(r) == size || Math.abs(getS()) == size;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(q, r);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        HexPosition that = (HexPosition) obj;
-        return q == that.q && r == that.r;
+    public List<HexPosition> getPositionsWhere(Predicate<HexPosition> condition) {
+        List<HexPosition> result = new ArrayList<>();
+        for (int q = -size; q <= size; q++) {
+            for (int r = -size; r <= size; r++) {
+                HexPosition pos = new HexPosition(q, r);
+                if (pos.isWithinBounds(size) && condition.test(pos)) {
+                    result.add(pos);
+                }
+            }
+        }
+        return result;
     }
 
     @Override
-    public String toString() {
-        return "(" + q + ", " + r + ")";
+    public List<HexPosition> getAdjacentPositions(HexPosition position) {
+        int[][] directions = {
+                {1, 0}, {1, -1}, {0, -1},
+                {-1, 0}, {-1, 1}, {0, 1}
+        };
+
+        List<HexPosition> neighbors = new ArrayList<>();
+        for (int[] dir : directions) {
+            HexPosition neighbor = new HexPosition(position.getQ() + dir[0], position.getR() + dir[1]);
+            if (isPositionInBounds(neighbor)) {
+                neighbors.add(neighbor);
+            }
+        }
+        return neighbors;
+    }
+
+    @Override
+    public boolean isBlocked(HexPosition position) {
+        return blockedPositions.contains(position);
+    }
+
+    public void setBlockedPositions(Set<HexPosition> blockedPositions) {
+        this.blockedPositions = blockedPositions;
+    }
+
+    public boolean isPositionValid(HexPosition position) {
+        return isValidMove(position);
+    }
+
+    public boolean isPositionInside(HexPosition position) {
+        return isPositionInBounds(position);
     }
 }
