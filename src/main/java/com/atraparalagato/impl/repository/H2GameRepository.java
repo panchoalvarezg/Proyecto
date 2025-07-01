@@ -1,215 +1,111 @@
 package com.atraparalagato.impl.repository;
 
 import com.atraparalagato.base.repository.DataRepository;
-import com.atraparalagato.base.model.GameState;
 import com.atraparalagato.impl.model.HexGameState;
-import com.atraparalagato.impl.model.HexPosition;
-
-import java.sql.*;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+public class H2GameRepository extends DataRepository<HexGameState, String> {
 
-/**
- * Implementación de DataRepository usando base de datos H2.
- */
-public class H2GameRepository extends DataRepository<GameState<HexPosition>, String> {
+    private final Map<String, HexGameState> storage = new HashMap<>();
 
-    // Deben coincidir con application.properties
-    private static final String JDBC_URL = "jdbc:h2:file:./data/atrapar-al-gato-db";
-    private static final String USER = "sa";
-    private static final String PASSWORD = "";
+    @Override
+    public HexGameState save(HexGameState entity) {
+        storage.put(entity.getGameId(), entity);
+        return entity;
+    }
 
-    private Connection connection;
+    @Override
+    public Optional<HexGameState> findById(String id) {
+        return Optional.ofNullable(storage.get(id));
+    }
 
-    public H2GameRepository() {
-        try {
-            this.connection = DriverManager.getConnection(JDBC_URL, USER, PASSWORD);
-            initialize();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException("Error al conectar a la base de datos H2", e);
+    @Override
+    public List<HexGameState> findAll() {
+        return new ArrayList<>(storage.values());
+    }
+
+    @Override
+    public List<HexGameState> findWhere(Predicate<HexGameState> condition) {
+        List<HexGameState> result = new ArrayList<>();
+        for (HexGameState state : storage.values()) {
+            if (condition.test(state)) result.add(state);
         }
+        return result;
     }
-
-@Override
-protected void initialize() {
-    System.out.println("Ejecutando initialize() y creando tabla Games si no existe...");
-    String query = """
-        CREATE TABLE IF NOT EXISTS Games (
-        gameId VARCHAR(255) PRIMARY KEY NOT NULL,
-        data VARCHAR(4096) NOT NULL
-        )
-        """;
-    try {
-        Statement statement = connection.createStatement();
-        statement.executeUpdate(query);
-    } catch (SQLException e) {
-        e.printStackTrace();
-        throw new RuntimeException("Error al inicializar la base de datos H2", e);
-    }
-}
 
     @Override
-    public GameState<HexPosition> save(GameState<HexPosition> entity) {
-        if (!(entity instanceof HexGameState hexState)) {
-            throw new IllegalArgumentException("Estado no es HexGameState");
+    public <R> List<R> findAndTransform(Predicate<HexGameState> condition, Function<HexGameState, R> transformer) {
+        List<R> result = new ArrayList<>();
+        for (HexGameState state : storage.values()) {
+            if (condition.test(state)) result.add(transformer.apply(state));
         }
-
-        String selectQuery = "SELECT COUNT(gameId) FROM Games WHERE gameId = ?";
-
-        try {
-            PreparedStatement selectStmt = connection.prepareStatement(selectQuery);
-            selectStmt.setString(1, hexState.getGameId());
-            ResultSet resultSet = selectStmt.executeQuery();
-
-            // Nos aseguramos que serializableState retorna un JSONObject
-            JSONObject serializedEntity = (JSONObject) hexState.getSerializableState();
-            String jsonString = serializedEntity.toString();
-
-            beforeSave(entity);
-
-            if (resultSet.next() && resultSet.getInt(1) != 0) {
-                String updateQuery = "UPDATE Games SET data = ? WHERE gameId = ?";
-                PreparedStatement updateStmt = connection.prepareStatement(updateQuery);
-                updateStmt.setString(1, jsonString);
-                updateStmt.setString(2, hexState.getGameId());
-                updateStmt.executeUpdate();
-                updateStmt.close();
-            } else {
-                String insertQuery = "INSERT INTO Games (gameId, data) VALUES (?, ?)";
-                PreparedStatement insertStmt = connection.prepareStatement(insertQuery);
-                insertStmt.setString(1, hexState.getGameId());
-                insertStmt.setString(2, jsonString);
-                insertStmt.executeUpdate();
-                insertStmt.close();
-            }
-
-            afterSave(entity);
-
-            selectStmt.close();
-            resultSet.close();
-
-            return hexState;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException("Error al guardar estado del juego", e);
-        }
+        return result;
     }
 
     @Override
-    public Optional<GameState<HexPosition>> findById(String id) {
-        if (id == null) return Optional.empty();
-
-        String query = "SELECT data FROM Games WHERE gameId = ? LIMIT 1";
-        try {
-            PreparedStatement stmt = connection.prepareStatement(query);
-            stmt.setString(1, id);
-            ResultSet resultSet = stmt.executeQuery();
-
-            if (resultSet.next()) {
-                String dataJSONString = resultSet.getString(1);
-                stmt.close();
-                resultSet.close();
-                return Optional.of(deserializeGameState(dataJSONString, id));
-            } else {
-                stmt.close();
-                resultSet.close();
-                return Optional.empty();
-            }
-        } catch (SQLException | JSONException e) {
-            e.printStackTrace();
-            throw new RuntimeException("Error al buscar juego por id", e);
-        }
-    }
-
-    private HexGameState deserializeGameState(String serializedData, String gameId) {
-        try {
-            JSONObject json = new JSONObject(serializedData);
-            HexGameState state = new HexGameState(gameId, json.getInt("boardSize"));
-
-            JSONArray catPos = json.getJSONArray("catPosition");
-            state.setCatPosition(new HexPosition(catPos.getInt(0), catPos.getInt(1)));
-
-            JSONArray blockedArray = json.getJSONArray("blockedPositions");
-            LinkedHashSet<HexPosition> blocked = new LinkedHashSet<>();
-            for (int i = 0; i < blockedArray.length(); i++) {
-                JSONArray pos = blockedArray.getJSONArray(i);
-                blocked.add(new HexPosition(pos.getInt(0), pos.getInt(1)));
-            }
-            state.getGameBoard().setBlockedPositions(blocked);
-
-            state.setMoveCount(json.getInt("moveCount"));
-            state.setBoardSize(json.getInt("boardSize"));
-
-            return state;
-        } catch (JSONException e) {
-            e.printStackTrace();
-            throw new RuntimeException("Error al deserializar estado del juego", e);
-        }
-    }
-
-    @Override
-    public List<GameState<HexPosition>> findAll() {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar findAll");
-    }
-
-    @Override
-    public List<GameState<HexPosition>> findWhere(Predicate<GameState<HexPosition>> condition) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar findWhere");
-    }
-
-    @Override
-    public <R> List<R> findAndTransform(Predicate<GameState<HexPosition>> condition, Function<GameState<HexPosition>, R> transformer) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar findAndTransform");
-    }
-
-    @Override
-    public long countWhere(Predicate<GameState<HexPosition>> condition) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar countWhere");
+    public long countWhere(Predicate<HexGameState> condition) {
+        return storage.values().stream().filter(condition).count();
     }
 
     @Override
     public boolean deleteById(String id) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar deleteById");
+        return storage.remove(id) != null;
     }
 
     @Override
-    public long deleteWhere(Predicate<GameState<HexPosition>> condition) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar deleteWhere");
+    public long deleteWhere(Predicate<HexGameState> condition) {
+        long initialSize = storage.size();
+        storage.values().removeIf(condition);
+        return initialSize - storage.size();
     }
 
     @Override
     public boolean existsById(String id) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar existsById");
+        return storage.containsKey(id);
     }
 
     @Override
-    public <R> R executeInTransaction(Function<DataRepository<GameState<HexPosition>, String>, R> operation) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar executeInTransaction");
+    public <R> R executeInTransaction(Function<DataRepository<HexGameState, String>, R> operation) {
+        return operation.apply(this);
     }
 
     @Override
-    public List<GameState<HexPosition>> findWithPagination(int page, int size) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar findWithPagination");
+    public List<HexGameState> findWithPagination(int page, int size) {
+        List<HexGameState> all = findAll();
+        int fromIndex = Math.min(page * size, all.size());
+        int toIndex = Math.min(fromIndex + size, all.size());
+        return all.subList(fromIndex, toIndex);
     }
 
     @Override
-    public List<GameState<HexPosition>> findAllSorted(Function<GameState<HexPosition>, ? extends Comparable<?>> sortKeyExtractor, boolean ascending) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar findAllSorted");
+    @SuppressWarnings("unchecked")
+    public List<HexGameState> findAllSorted(Function<HexGameState, ? extends Comparable<?>> sortKeyExtractor, boolean ascending) {
+        List<HexGameState> all = findAll();
+        all.sort((o1, o2) -> {
+            Comparable key1 = sortKeyExtractor.apply(o1);
+            Comparable key2 = sortKeyExtractor.apply(o2);
+            int cmp;
+            if (key1 == null && key2 == null) cmp = 0;
+            else if (key1 == null) cmp = -1;
+            else if (key2 == null) cmp = 1;
+            else cmp = key1.compareTo(key2);
+            return ascending ? cmp : -cmp;
+        });
+        return all;
     }
 
     @Override
     public <R> List<R> executeCustomQuery(String query, Function<Object, R> resultMapper) {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar executeCustomQuery");
+        return Collections.emptyList();
     }
 
     @Override
+    protected void initialize() {}
+
+    @Override
     protected void cleanup() {
-        throw new UnsupportedOperationException("Los estudiantes deben implementar cleanup");
+        storage.clear();
     }
 }
