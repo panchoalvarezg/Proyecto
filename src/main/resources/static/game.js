@@ -196,7 +196,7 @@ class Game {
             <p>Jugador: ${playerName}</p>
             <p>Movimientos: ${this.movesElement.textContent}</p>
             <div>
-                <button onclick="game.saveScore('${this.gameId}', '${playerName}')">Guardar Puntuación</button>
+                <button onclick="game.saveScore('${this.gameId}', document.getElementById('player-name').value)">Guardar Puntuación</button>
                 <button onclick="game.closeGameOverDialog()">Cerrar</button>
                 <button onclick="game.startNewGame()">Nuevo Juego</button>
             </div>
@@ -213,11 +213,11 @@ class Game {
         alert(message);
     }
 
-    // Implementación directa en la clase Game
+    // Cambia el método para pasar el gameId en la petición (con gameId en el query)
     async saveScore(gameId, playerName) {
         const score = calcularPuntajeActual();
         try {
-            const response = await fetch(`/api/game/save-score?playerName=${encodeURIComponent(playerName)}&score=${score}`, {
+            const response = await fetch(`/api/game/save-score?gameId=${encodeURIComponent(gameId)}&playerName=${encodeURIComponent(playerName)}&score=${score}`, {
                 method: 'POST',
                 headers: { 'Accept': 'application/json' }
             });
