@@ -4,7 +4,6 @@ import com.atraparalagato.example.service.ExampleGameService;
 import com.atraparalagato.impl.model.HexGameBoard;
 import com.atraparalagato.impl.model.HexGameState;
 import com.atraparalagato.impl.model.HexPosition;
-import com.atraparalagato.impl.model.GameScore;
 import com.atraparalagato.impl.service.GameService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,9 +12,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 
-/**
- * Controlador del juego que alterna entre implementaciones de ejemplo y de estudiantes.
- */
 @RestController
 @RequestMapping("/api/game")
 @CrossOrigin(origins = "*")
@@ -25,9 +21,8 @@ public class GameController {
     private boolean useExampleImplementation;
 
     private final ExampleGameService exampleGameService;
-    private final GameService gameService; // Servicio para guardar puntaje
+    private final GameService gameService;
 
-    // Puedes usar un mapa simple para almacenar los estados de juego de la implementación del estudiante (prototipo simple)
     private final Map<String, HexGameState> studentGames = new HashMap<>();
 
     @Autowired
@@ -138,17 +133,17 @@ public class GameController {
     }
 
     /**
-     * Endpoint para guardar el nombre y el puntaje del jugador.
-     * Ejemplo de request:
-     * POST /api/game/save-score?playerName=nombre&score=1234
+     * Endpoint para guardar el nombre y el puntaje del jugador (ahora también requiere gameId).
+     * POST /api/game/save-score?gameId=...&playerName=...&score=...
      */
     @PostMapping("/save-score")
     public ResponseEntity<?> saveScore(
+            @RequestParam String gameId,
             @RequestParam String playerName,
             @RequestParam Integer score
     ) {
         try {
-            gameService.saveScore(playerName, score);
+            gameService.saveScore(gameId, playerName, score);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
@@ -231,18 +226,14 @@ public class GameController {
     // Métodos privados para implementación de estudiantes
 
     private ResponseEntity<Map<String, Object>> startGameWithStudentImplementation(int boardSize) {
-        // Inicializa el tablero y el estado del juego del estudiante
         HexGameBoard board = new HexGameBoard(boardSize);
-        // Posición central (ajusta si tienes lógica diferente para axial/cúbico)
         int center = 0;
         HexPosition cat = new HexPosition(center, center);
         String gameId = UUID.randomUUID().toString();
         HexGameState state = new HexGameState(gameId, board, cat);
 
-        // Guarda el estado en el mapa (prototipo simple)
         studentGames.put(gameId, state);
 
-        // Devuelve el estado serializable al frontend
         Map<String, Object> response = (Map<String, Object>) state.getSerializableState();
         response.put("implementation", "impl");
         return ResponseEntity.ok(response);
