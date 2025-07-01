@@ -3,16 +3,19 @@ package com.atraparalagato.impl.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "GAMES")
+@Table(name = "games")
 public class GameScore {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "PLAYER_NAME")
+    @Column(name = "gameid", nullable = false)
+    private String gameId; // Debe existir este campo
+
+    @Column(name = "player_name")
     private String playerName;
 
-    @Column(name = "SCORE")
+    @Column(name = "score")
     private Integer score;
 
     // Getters y setters
