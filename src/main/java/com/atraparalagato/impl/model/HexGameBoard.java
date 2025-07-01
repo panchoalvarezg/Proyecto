@@ -1,8 +1,6 @@
 package com.atraparalagato.impl.model;
 
 import com.atraparalagato.base.model.GameBoard;
-import com.atraparalagato.base.model.GameState;
-import com.atraparalagato.base.model.Position;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -16,7 +14,7 @@ public class HexGameBoard extends GameBoard<HexPosition> {
 
     @Override
     protected Set<HexPosition> initializeBlockedPositions() {
-        return new HashSet<>();
+        return new LinkedHashSet<>();
     }
 
     @Override
@@ -36,33 +34,32 @@ public class HexGameBoard extends GameBoard<HexPosition> {
 
     @Override
     public List<HexPosition> getPositionsWhere(Predicate<HexPosition> condition) {
-        List<HexPosition> result = new ArrayList<>();
-        for (int q = -size / 2; q <= size / 2; q++) {
-            for (int r = -size / 2; r <= size / 2; r++) {
+        List<HexPosition> positions = new ArrayList<>();
+        for (int q = -size; q <= size; q++) {
+            for (int r = Math.max(-size, -q - size); r <= Math.min(size, -q + size); r++) {
                 HexPosition pos = new HexPosition(q, r);
-                if (pos.isWithinBounds(size) && condition.test(pos)) {
-                    result.add(pos);
+                if (condition.test(pos)) {
+                    positions.add(pos);
                 }
             }
         }
-        return result;
+        return positions;
     }
 
     @Override
     public List<HexPosition> getAdjacentPositions(HexPosition position) {
         int[][] directions = {
-                {1, 0}, {1, -1}, {0, -1},
-                {-1, 0}, {-1, 1}, {0, 1}
+            {1, 0}, {1, -1}, {0, -1},
+            {-1, 0}, {-1, 1}, {0, 1}
         };
-
-        List<HexPosition> neighbors = new ArrayList<>();
+        List<HexPosition> adjacents = new ArrayList<>();
         for (int[] dir : directions) {
             HexPosition neighbor = new HexPosition(position.getQ() + dir[0], position.getR() + dir[1]);
-            if (isPositionInBounds(neighbor)) {
-                neighbors.add(neighbor);
+            if (isPositionInBounds(neighbor) && !isBlocked(neighbor)) {
+                adjacents.add(neighbor);
             }
         }
-        return neighbors;
+        return adjacents;
     }
 
     @Override
@@ -70,7 +67,8 @@ public class HexGameBoard extends GameBoard<HexPosition> {
         return blockedPositions.contains(position);
     }
 
-    public void setBlockedPositions(Set<HexPosition> blockedPositions) {
-        this.blockedPositions = blockedPositions;
+    // Setter opcional necesario para restaurar desde repositorio
+    public void setBlockedPositions(Set<HexPosition> positions) {
+        this.blockedPositions = new LinkedHashSet<>(positions);
     }
 }
