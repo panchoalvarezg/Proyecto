@@ -25,39 +25,43 @@ public class HexPosition extends Position {
         return -q - r;
     }
 
-    public boolean isAtBorder(int boardSize) {
-        int s = getS();
-        return Math.abs(q) == boardSize / 2 || Math.abs(r) == boardSize / 2 || Math.abs(s) == boardSize / 2;
-    }
-
     @Override
     public double distanceTo(Position other) {
         if (!(other instanceof HexPosition)) return Double.MAX_VALUE;
         HexPosition o = (HexPosition) other;
-        return (Math.abs(q - o.q) + Math.abs(r - o.r) + Math.abs(getS() - o.getS())) / 2.0;
+        int dq = Math.abs(this.q - o.q);
+        int dr = Math.abs(this.r - o.r);
+        int ds = Math.abs(this.getS() - o.getS());
+        return (dq + dr + ds) / 2.0;
     }
 
     @Override
     public Position add(Position other) {
+        if (!(other instanceof HexPosition)) return this;
         HexPosition o = (HexPosition) other;
-        return new HexPosition(q + o.q, r + o.r);
+        return new HexPosition(this.q + o.q, this.r + o.r);
     }
 
     @Override
     public Position subtract(Position other) {
+        if (!(other instanceof HexPosition)) return this;
         HexPosition o = (HexPosition) other;
-        return new HexPosition(q - o.q, r - o.r);
+        return new HexPosition(this.q - o.q, this.r - o.r);
     }
 
     @Override
     public boolean isAdjacentTo(Position other) {
-        return this.distanceTo(other) == 1.0;
+        return distanceTo(other) == 1.0;
     }
 
     @Override
     public boolean isWithinBounds(int maxSize) {
         int s = getS();
-        return Math.abs(q) <= maxSize / 2 && Math.abs(r) <= maxSize / 2 && Math.abs(s) <= maxSize / 2;
+        return Math.abs(q) <= maxSize && Math.abs(r) <= maxSize && Math.abs(s) <= maxSize;
+    }
+
+    public boolean isAtBorder(int size) {
+        return Math.abs(q) == size || Math.abs(r) == size || Math.abs(getS()) == size;
     }
 
     @Override
@@ -68,13 +72,13 @@ public class HexPosition extends Position {
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
-        if (!(obj instanceof HexPosition)) return false;
-        HexPosition o = (HexPosition) obj;
-        return this.q == o.q && this.r == o.r;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        HexPosition that = (HexPosition) obj;
+        return q == that.q && r == that.r;
     }
 
     @Override
     public String toString() {
-        return "(" + q + "," + r + ")";
+        return "(" + q + ", " + r + ")";
     }
-} 
+}
