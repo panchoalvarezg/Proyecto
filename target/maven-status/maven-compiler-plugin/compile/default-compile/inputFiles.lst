@@ -11,10 +11,12 @@ C:\Users\FAlva\Documents\GitHub\Proyecto\src\main\java\com\atraparalagato\base\s
 C:\Users\FAlva\Documents\GitHub\Proyecto\src\main\java\com\atraparalagato\example\repository\InMemoryGameRepository.java
 C:\Users\FAlva\Documents\GitHub\Proyecto\src\main\java\com\atraparalagato\impl\strategy\AStarCatMovement.java
 C:\Users\FAlva\Documents\GitHub\Proyecto\src\main\java\com\atraparalagato\impl\model\HexGameBoard.java
+C:\Users\FAlva\Documents\GitHub\Proyecto\src\main\java\com\atraparalagato\impl\ScoreRepository.java
 C:\Users\FAlva\Documents\GitHub\Proyecto\src\main\java\com\atraparalagato\impl\model\HexGameState.java
 C:\Users\FAlva\Documents\GitHub\Proyecto\src\main\java\com\atraparalagato\base\model\GameBoard.java
 C:\Users\FAlva\Documents\GitHub\Proyecto\src\main\java\com\atraparalagato\impl\strategy\BFSCatMovement.java
 C:\Users\FAlva\Documents\GitHub\Proyecto\src\main\java\com\atraparalagato\base\model\GameState.java
 C:\Users\FAlva\Documents\GitHub\Proyecto\src\main\java\com\atraparalagato\base\strategy\CatMovementStrategy.java
 C:\Users\FAlva\Documents\GitHub\Proyecto\src\main\java\com\atraparalagato\example\service\ExampleGameService.java
+C:\Users\FAlva\Documents\GitHub\Proyecto\src\main\java\com\atraparalagato\impl\Score.java
 C:\Users\FAlva\Documents\GitHub\Proyecto\src\main\java\com\atraparalagato\example\model\ExampleGameBoard.java
