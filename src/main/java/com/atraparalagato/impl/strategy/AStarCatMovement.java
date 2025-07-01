@@ -1,63 +1,83 @@
 package com.atraparalagato.impl.strategy;
 
 import com.atraparalagato.base.strategy.CatMovementStrategy;
-import com.atraparalagato.impl.model.HexGameBoard;
 import com.atraparalagato.impl.model.HexPosition;
+import com.atraparalagato.impl.model.HexGameBoard;
 
 import java.util.*;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
-public class AStarCatMovement implements CatMovementStrategy<HexPosition> {
+public class AStarCatMovement extends CatMovementStrategy<HexPosition> {
 
-    @Override
-    public HexPosition getNextMove(HexPosition catPosition, HexGameBoard board) {
-        List<HexPosition> path = getFullPath(catPosition, board);
-        return (path != null && path.size() > 1) ? path.get(1) : catPosition;
+    public AStarCatMovement(HexGameBoard board) {
+        super(board);
     }
 
     @Override
-    public List<HexPosition> getFullPath(HexPosition catPosition, HexGameBoard board) {
-        PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingInt(n -> n.fScore));
-        Map<HexPosition, HexPosition> cameFrom = new HashMap<>();
-        Map<HexPosition, Integer> gScore = new HashMap<>();
-
-        gScore.put(catPosition, 0);
-        openSet.add(new Node(catPosition, heuristic(catPosition, board)));
-
-        while (!openSet.isEmpty()) {
-            Node current = openSet.poll();
-            if (current.position.isAtBorder(board.getSize())) {
-                return reconstructPath(cameFrom, current.position);
+    protected List<HexPosition> getPossibleMoves(HexPosition currentPosition) {
+        HexGameBoard hexBoard = (HexGameBoard) board;
+        List<HexPosition> moves = new ArrayList<>();
+        for (HexPosition neighbor : hexBoard.getAdjacentPositions(currentPosition)) {
+            if (!hexBoard.isBlocked(neighbor)) {
+                moves.add(neighbor);
             }
-            for (HexPosition neighbor : board.getAdjacentPositions(current.position)) {
-                if (board.isBlocked(neighbor)) continue;
-                int tentativeG = gScore.get(current.position) + 1;
-                if (tentativeG < gScore.getOrDefault(neighbor, Integer.MAX_VALUE)) {
-                    cameFrom.put(neighbor, current.position);
-                    gScore.put(neighbor, tentativeG);
-                    int fScore = tentativeG + heuristic(neighbor, board);
-                    openSet.add(new Node(neighbor, fScore));
+        }
+        return moves;
+    }
+
+    @Override
+    protected Optional<HexPosition> selectBestMove(List<HexPosition> possibleMoves, HexPosition currentPosition, HexPosition targetPosition) {
+        if (possibleMoves.isEmpty()) return Optional.empty();
+        Function<HexPosition, Double> heuristic = getHeuristicFunction(targetPosition);
+        return possibleMoves.stream().min(Comparator.comparingDouble(heuristic::apply));
+    }
+
+    @Override
+    protected Function<HexPosition, Double> getHeuristicFunction(HexPosition targetPosition) {
+        return pos -> targetPosition != null ? pos.distanceTo(targetPosition) : 0.0;
+    }
+
+    @Override
+    protected Predicate<HexPosition> getGoalPredicate() {
+        HexGameBoard hexBoard = (HexGameBoard) board;
+        int n = hexBoard.getSize();
+        return pos -> pos.getQ() == 0 || pos.getQ() == n-1 || pos.getR() == 0 || pos.getR() == n-1;
+    }
+
+    @Override
+    protected double getMoveCost(HexPosition from, HexPosition to) {
+        return 1.0;
+    }
+
+    @Override
+    public boolean hasPathToGoal(HexPosition currentPosition) {
+        Set<HexPosition> visited = new HashSet<>();
+        Queue<HexPosition> queue = new LinkedList<>();
+        queue.add(currentPosition);
+        Predicate<HexPosition> isGoal = getGoalPredicate();
+        HexGameBoard hexBoard = (HexGameBoard) board;
+
+        while (!queue.isEmpty()) {
+            HexPosition pos = queue.poll();
+            if (isGoal.test(pos)) return true;
+            visited.add(pos);
+            for (HexPosition neighbor : hexBoard.getAdjacentPositions(pos)) {
+                if (!visited.contains(neighbor) && !hexBoard.isBlocked(neighbor)) {
+                    queue.add(neighbor);
                 }
             }
         }
-        return null;
+        return false;
     }
 
-    private int heuristic(HexPosition position, HexGameBoard board) {
-        int size = board.getSize();
-        int distanceToEdge = Math.min(Math.min(position.q(), size - position.q() - 1),
-                                      Math.min(position.r(), size - position.r() - 1));
-        return distanceToEdge;
-    }
-
-    private List<HexPosition> reconstructPath(Map<HexPosition, HexPosition> cameFrom, HexPosition current) {
+    @Override
+    public List<HexPosition> getFullPath(HexPosition currentPosition, HexPosition targetPosition) {
         List<HexPosition> path = new ArrayList<>();
-        while (current != null) {
-            path.add(current);
-            current = cameFrom.get(current);
-        }
-        Collections.reverse(path);
+        path.add(currentPosition);
+        if (currentPosition.equals(targetPosition)) return path;
+        // Implementar A* real si lo necesitas
         return path;
     }
-
-    private record Node(HexPosition position, int fScore) {}
 }
