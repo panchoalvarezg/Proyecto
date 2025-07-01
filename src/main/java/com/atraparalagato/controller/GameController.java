@@ -1,21 +1,17 @@
 package com.atraparalagato.controller;
 
-import com.atraparalagato.example.model.ExampleGameState;
 import com.atraparalagato.example.service.ExampleGameService;
+import com.atraparalagato.impl.model.HexGameBoard;
 import com.atraparalagato.impl.model.HexGameState;
 import com.atraparalagato.impl.model.HexPosition;
-import com.atraparalagato.impl.service.HexGameService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Controlador del juego que alterna entre implementaciones de ejemplo y de estudiantes.
- * Usa la propiedad 'game.use-example-implementation' para determinar qué implementación usar.
  */
 @RestController
 @RequestMapping("/api/game")
@@ -26,11 +22,12 @@ public class GameController {
     private boolean useExampleImplementation;
 
     private final ExampleGameService exampleGameService;
-    private final HexGameService hexGameService;
+
+    // Puedes usar un mapa simple para almacenar los estados de juego de la implementación del estudiante (prototipo simple)
+    private final Map<String, HexGameState> studentGames = new HashMap<>();
 
     public GameController() {
         this.exampleGameService = new ExampleGameService();
-        this.hexGameService = new HexGameService();
     }
 
     /**
@@ -52,104 +49,23 @@ public class GameController {
 
     /**
      * Ejecuta un movimiento del jugador.
-     * Mejora: valida primero la posición antes de estado del juego.
      */
     @PostMapping("/block")
     public ResponseEntity<Map<String, Object>> blockPosition(
             @RequestParam String gameId,
             @RequestParam int q,
             @RequestParam int r) {
-        System.out.println("[/api/game/block] Intentando bloquear posición: gameId=" + gameId + ", q=" + q + ", r=" + r);
-
         try {
-            int boardSize;
-            if (useExampleImplementation) {
-                Optional<ExampleGameState> gameStateOpt = exampleGameService.getGameState(gameId);
-                if (gameStateOpt.isEmpty()) {
-                    return ResponseEntity.badRequest().body(Map.of("error", "Partida no encontrada."));
-                }
-                boardSize = gameStateOpt.get().getGameBoard().getSize();
-            } else {
-                Optional<HexGameState> gameStateOpt = hexGameService.getGameState(gameId);
-                if (gameStateOpt.isEmpty()) {
-                    return ResponseEntity.badRequest().body(Map.of("error", "Partida no encontrada."));
-                }
-                boardSize = gameStateOpt.get().getGameBoard().getSize(); // Cambiado a getSize()
-            }
-            int s = -q - r;
-            if (Math.abs(q) >= boardSize || Math.abs(r) >= boardSize || Math.abs(s) >= boardSize) {
-                System.out.println("[/api/game/block] Celda inválida: fuera del tablero.");
-                return ResponseEntity
-                        .badRequest()
-                        .body(Map.of("error", "Celda inválida: fuera del tablero."));
-            }
-
-            // 2. Validar estado del juego
-            boolean inProgress;
-            if (useExampleImplementation) {
-                Optional<ExampleGameState> gameStateOpt = exampleGameService.getGameState(gameId);
-                if (gameStateOpt.isEmpty()) {
-                    return ResponseEntity.badRequest().body(Map.of("error", "Partida no encontrada."));
-                }
-                inProgress = "IN_PROGRESS".equalsIgnoreCase(gameStateOpt.get().getStatus().toString());
-            } else {
-                Optional<HexGameState> gameStateOpt = hexGameService.getGameState(gameId);
-                if (gameStateOpt.isEmpty()) {
-                    return ResponseEntity.badRequest().body(Map.of("error", "Partida no encontrada."));
-                }
-                inProgress = "IN_PROGRESS".equalsIgnoreCase(gameStateOpt.get().getStatus().toString());
-            }
-            if (!inProgress) {
-                System.out.println("[/api/game/block] La partida no está en progreso.");
-                return ResponseEntity.badRequest().body(Map.of("error", "La partida no está en progreso."));
-            }
-
-            // 3. Procesar el movimiento normalmente
             HexPosition position = new HexPosition(q, r);
-            System.out.println("[/api/game/block] HexPosition creada: " + position);
 
-            Map<String, Object> response;
             if (useExampleImplementation) {
-                Optional<ExampleGameState> result = exampleGameService.executePlayerMove(gameId, position);
-                if (result.isEmpty()) {
-                    System.out.println("[/api/game/block] Movimiento inválido o partida no encontrada para gameId=" + gameId);
-                    return ResponseEntity.badRequest().body(Map.of("error", "Movimiento inválido o partida no encontrada."));
-                }
-                ExampleGameState state = result.get();
-
-                response = new HashMap<>();
-                response.put("gameId", state.getGameId());
-                response.put("status", state.getStatus().toString());
-                response.put("catPosition", Map.of("q", state.getCatPosition().getQ(), "r", state.getCatPosition().getR()));
-                response.put("blockedCells", state.getGameBoard().getBlockedPositions());
-                response.put("movesCount", state.getMoveCount());
-                response.put("implementation", "example");
+                return blockPositionWithExample(gameId, position);
             } else {
-                Optional<HexGameState> result = hexGameService.executePlayerMove(gameId, position, null);
-                if (result.isEmpty()) {
-                    System.out.println("[/api/game/block] Movimiento inválido o partida no encontrada para gameId=" + gameId);
-                    return ResponseEntity.badRequest().body(Map.of("error", "Movimiento inválido o partida no encontrada."));
-                }
-                HexGameState state = result.get();
-
-                response = new HashMap<>();
-                response.put("gameId", state.getGameId());
-                response.put("status", state.getStatus().toString());
-                response.put("catPosition", Map.of("q", state.getCatPosition().getQ(), "r", state.getCatPosition().getR()));
-                response.put("blockedCells", state.getGameBoard().getBlockedPositions());
-                response.put("movesCount", state.getMoveCount());
-                response.put("implementation", "impl");
+                return blockPositionWithStudentImplementation(gameId, position);
             }
-
-            return ResponseEntity.ok(response);
-
-        } catch (IllegalArgumentException e) {
-            System.out.println("[/api/game/block] Movimiento inválido (IllegalArgumentException): " + e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            System.out.println("[/api/game/block] Error inesperado: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body(Map.of("error", "Error interno al ejecutar movimiento: " + e.getMessage()));
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Error al ejecutar movimiento: " + e.getMessage()));
         }
     }
 
@@ -180,7 +96,7 @@ public class GameController {
                 Map<String, Object> stats = exampleGameService.getGameStatistics(gameId);
                 return ResponseEntity.ok(stats);
             } else {
-                // Ejemplo: puedes usar hexGameService.getGameStatistics(gameId) si implementas el método
+                // Puedes implementar estadísticas reales si lo deseas
                 return ResponseEntity.ok(Map.of("error", "Student implementation not available yet"));
             }
         } catch (Exception e) {
@@ -207,7 +123,6 @@ public class GameController {
                     return ResponseEntity.ok(Map.of("message", "No hay sugerencias disponibles"));
                 }
             } else {
-                // Ejemplo: puedes usar hexGameService.getIntelligentSuggestion(gameId, dificultad) si implementas el método
                 return ResponseEntity.ok(Map.of("error", "Student implementation not available yet"));
             }
         } catch (Exception e) {
@@ -248,6 +163,26 @@ public class GameController {
         return ResponseEntity.ok(response);
     }
 
+    private ResponseEntity<Map<String, Object>> blockPositionWithExample(String gameId, HexPosition position) {
+        var gameStateOpt = exampleGameService.executePlayerMove(gameId, position);
+
+        if (gameStateOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        var gameState = gameStateOpt.get();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("gameId", gameState.getGameId());
+        response.put("status", gameState.getStatus().toString());
+        response.put("catPosition", Map.of("q", gameState.getCatPosition().getQ(), "r", gameState.getCatPosition().getR()));
+        response.put("blockedCells", gameState.getGameBoard().getBlockedPositions());
+        response.put("movesCount", gameState.getMoveCount());
+        response.put("implementation", "example");
+
+        return ResponseEntity.ok(response);
+    }
+
     private ResponseEntity<Map<String, Object>> getGameStateWithExample(String gameId) {
         var gameStateOpt = exampleGameService.getGameState(gameId);
 
@@ -271,35 +206,45 @@ public class GameController {
     // Métodos privados para implementación de estudiantes
 
     private ResponseEntity<Map<String, Object>> startGameWithStudentImplementation(int boardSize) {
-        HexGameState gameState = hexGameService.createGame(boardSize, "EASY", Map.of());
+        // Inicializa el tablero y el estado del juego del estudiante
+        HexGameBoard board = new HexGameBoard(boardSize);
+        // Posición central (ajusta si tienes lógica diferente para axial/cúbico)
+        int center = 0; // Por defecto (0,0) es el centro, cambia si usas axial/cúbico
+        HexPosition cat = new HexPosition(center, center);
+        String gameId = UUID.randomUUID().toString();
+        HexGameState state = new HexGameState(gameId, board, cat);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("gameId", gameState.getGameId());
-        response.put("status", gameState.getStatus().toString());
-        response.put("catPosition", Map.of("q", gameState.getCatPosition().getQ(), "r", gameState.getCatPosition().getR()));
-        response.put("blockedCells", gameState.getGameBoard().getBlockedPositions());
-        response.put("movesCount", gameState.getMoveCount());
-        response.put("boardSize", boardSize);
+        // Guarda el estado en el mapa (prototipo simple)
+        studentGames.put(gameId, state);
+
+        // Devuelve el estado serializable al frontend
+        Map<String, Object> response = (Map<String, Object>) state.getSerializableState();
         response.put("implementation", "impl");
+        return ResponseEntity.ok(response);
+    }
 
+    private ResponseEntity<Map<String, Object>> blockPositionWithStudentImplementation(String gameId, HexPosition position) {
+        HexGameState state = studentGames.get(gameId);
+        if (state == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        boolean success = state.executeMove(position);
+
+        Map<String, Object> response = (Map<String, Object>) state.getSerializableState();
+        response.put("implementation", "impl");
+        response.put("moveSuccess", success);
         return ResponseEntity.ok(response);
     }
 
     private ResponseEntity<Map<String, Object>> getGameStateWithStudentImplementation(String gameId) {
-        var gameStateOpt = hexGameService.getGameState(gameId);
-        if (gameStateOpt.isEmpty()) {
+        HexGameState state = studentGames.get(gameId);
+        if (state == null) {
             return ResponseEntity.notFound().build();
         }
-        var gameState = gameStateOpt.get();
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("gameId", gameState.getGameId());
-        response.put("status", gameState.getStatus().toString());
-        response.put("catPosition", Map.of("q", gameState.getCatPosition().getQ(), "r", gameState.getCatPosition().getR()));
-        response.put("blockedCells", gameState.getGameBoard().getBlockedPositions());
-        response.put("movesCount", gameState.getMoveCount());
+        Map<String, Object> response = (Map<String, Object>) state.getSerializableState();
         response.put("implementation", "impl");
-
         return ResponseEntity.ok(response);
     }
 }
