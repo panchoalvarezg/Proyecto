@@ -196,7 +196,7 @@ class Game {
             <p>Jugador: ${playerName}</p>
             <p>Movimientos: ${this.movesElement.textContent}</p>
             <div>
-                <button onclick="saveScore('${this.gameId}', '${playerName}')">Guardar Puntuación</button>
+                <button onclick="game.saveScore('${this.gameId}', '${playerName}')">Guardar Puntuación</button>
                 <button onclick="game.closeGameOverDialog()">Cerrar</button>
                 <button onclick="game.startNewGame()">Nuevo Juego</button>
             </div>
@@ -212,32 +212,24 @@ class Game {
         console.error(message, error);
         alert(message);
     }
-}
 
-// Score logic (igual que antes)
-const createScoreSaver = (gameId, playerName) => async () => {
-    // Calcula el puntaje actual según tu lógica de juego
-    const score = calcularPuntajeActual();
-    try {
-        const response = await fetch(`/api/game/save-score?playerName=${encodeURIComponent(playerName)}&score=${score}`, {
-            method: 'POST',
-            headers: { 'Accept': 'application/json' }
-        });
-        if (response.ok) {
-            alert('¡Puntuación guardada exitosamente!');
-            return await response.json();
-        } else {
-            throw new Error('Error al guardar puntuación');
+    // Implementación directa en la clase Game
+    async saveScore(gameId, playerName) {
+        const score = calcularPuntajeActual();
+        try {
+            const response = await fetch(`/api/game/save-score?playerName=${encodeURIComponent(playerName)}&score=${score}`, {
+                method: 'POST',
+                headers: { 'Accept': 'application/json' }
+            });
+            if (response.ok) {
+                alert('¡Puntuación guardada exitosamente!');
+            } else {
+                throw new Error('Error al guardar puntuación');
+            }
+        } catch (error) {
+            alert('Error al guardar la puntuación');
         }
-    } catch (error) {
-        console.error('Error saving score:', error);
-        alert('Error al guardar la puntuación');
     }
-};
-
-async function saveScore(gameId, playerName) {
-    const scoreSaver = createScoreSaver(gameId, playerName);
-    await scoreSaver();
 }
 
 /**
@@ -248,76 +240,6 @@ async function saveScore(gameId, playerName) {
 function calcularPuntajeActual() {
     // TODO: Reemplaza con el cálculo real del puntaje del juego
     return Math.floor(Math.random() * 1000);
-}
-
-const createScoreFetcher = (endpoint) => async () => {
-    try {
-        const response = await fetch(endpoint, {
-            headers: { 'Accept': 'application/json' }
-        });
-        return await response.json();
-    } catch (error) {
-        console.error('Error fetching scores:', error);
-        return [];
-    }
-};
-
-const scoreDisplayFunctions = {
-    top: createScoreFetcher('/api/game/high-scores?limit=10'),
-    winning: createScoreFetcher('/api/game/winning-scores'),
-    recent: createScoreFetcher('/api/game/high-scores?limit=20')
-};
-
-const formatScore = (score) => {
-    const winIcon = score.playerWon ? '🏆' : '❌';
-    const calculatedScore = score.playerWon ?
-        (1000 - score.movesCount * 10 + score.boardSize * 50 + Math.max(0, 300 - score.gameDurationSeconds)) :
-        (100 - score.movesCount * 10);
-    return {
-        playerName: score.playerName,
-        details: `${winIcon} ${score.movesCount} movimientos - Tablero ${score.boardSize}x${score.boardSize}`,
-        score: Math.max(0, calculatedScore)
-    };
-};
-
-const createScoreRenderer = (containerId) => (scores) => {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    const scoreElements = scores
-        .map(formatScore)
-        .map(formattedScore => `
-            <li>
-                <div class="score-info">
-                    <div class="player-name">${formattedScore.playerName}</div>
-                    <div class="game-details">${formattedScore.details}</div>
-                </div>
-                <div class="score-value">${formattedScore.score}</div>
-            </li>
-        `);
-    container.innerHTML = scoreElements.join('');
-};
-
-async function showHighScores() {
-    const section = document.getElementById('high-score-section');
-    section.style.display = 'block';
-    await showScoreTab('top');
-}
-
-function hideHighScores() {
-    const section = document.getElementById('high-score-section');
-    section.style.display = 'none';
-}
-
-async function showScoreTab(tabType) {
-    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-    event?.target?.classList.add('active') ||
-        document.querySelector(`[onclick="showScoreTab('${tabType}')"]`)?.classList.add('active');
-    const scoreFetcher = scoreDisplayFunctions[tabType];
-    const scoreRenderer = createScoreRenderer('score-list');
-    if (scoreFetcher) {
-        const scores = await scoreFetcher();
-        scoreRenderer(scores);
-    }
 }
 
 const initializeGame = () => {
