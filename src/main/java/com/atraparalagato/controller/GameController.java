@@ -4,6 +4,9 @@ import com.atraparalagato.example.service.ExampleGameService;
 import com.atraparalagato.impl.model.HexGameBoard;
 import com.atraparalagato.impl.model.HexGameState;
 import com.atraparalagato.impl.model.HexPosition;
+import com.atraparalagato.impl.model.GameScore;
+import com.atraparalagato.impl.service.GameService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,12 +25,15 @@ public class GameController {
     private boolean useExampleImplementation;
 
     private final ExampleGameService exampleGameService;
+    private final GameService gameService; // Servicio para guardar puntaje
 
     // Puedes usar un mapa simple para almacenar los estados de juego de la implementación del estudiante (prototipo simple)
     private final Map<String, HexGameState> studentGames = new HashMap<>();
 
-    public GameController() {
+    @Autowired
+    public GameController(GameService gameService) {
         this.exampleGameService = new ExampleGameService();
+        this.gameService = gameService;
     }
 
     /**
@@ -132,6 +138,25 @@ public class GameController {
     }
 
     /**
+     * Endpoint para guardar el nombre y el puntaje del jugador.
+     * Ejemplo de request:
+     * POST /api/game/save-score?playerName=nombre&score=1234
+     */
+    @PostMapping("/save-score")
+    public ResponseEntity<?> saveScore(
+            @RequestParam String playerName,
+            @RequestParam Integer score
+    ) {
+        try {
+            gameService.saveScore(playerName, score);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Error al guardar la puntuación: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Obtiene información sobre qué implementación se está usando.
      */
     @GetMapping("/implementation-info")
@@ -209,7 +234,7 @@ public class GameController {
         // Inicializa el tablero y el estado del juego del estudiante
         HexGameBoard board = new HexGameBoard(boardSize);
         // Posición central (ajusta si tienes lógica diferente para axial/cúbico)
-        int center = 0; // Por defecto (0,0) es el centro, cambia si usas axial/cúbico
+        int center = 0;
         HexPosition cat = new HexPosition(center, center);
         String gameId = UUID.randomUUID().toString();
         HexGameState state = new HexGameState(gameId, board, cat);
